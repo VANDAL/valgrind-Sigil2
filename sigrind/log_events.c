@@ -56,6 +56,13 @@ static UInt curr_used;
 static inline void incr_used(void);
 static inline void update_curr_buf(void);
 
+#ifdef COUNT_EVENT_CHECK
+static unsigned long long mem_events = 0;
+static unsigned long long comp_events = 0;
+static unsigned long long sync_events = 0;
+static unsigned long long cxt_events = 0;
+#endif
+
 void SGL_(init_IPC)()
 {
 	if (SGL_(clo).tmpdir == NULL)
@@ -124,6 +131,13 @@ void SGL_(finish_IPC)(void)
 
 	VG_(close)(emptyfd);
 	VG_(close)(fullfd);
+
+#ifdef COUNT_EVENT_CHECK
+    VG_(printf)("Total Mem Events: %llu\n",  mem_events);
+    VG_(printf)("Total Comp Events: %llu\n", comp_events);
+    VG_(printf)("Total Sync Events: %llu\n", sync_events);
+    VG_(printf)("Total Cxt Events: %llu\n",  cxt_events);
+#endif
 }
 
 /** 
@@ -133,6 +147,9 @@ void SGL_(finish_IPC)(void)
  */
 void SGL_(log_1I0D)(InstrInfo* ii)
 {
+#ifdef COUNT_EVENT_CHECK
+    cxt_events++;
+#endif
 	update_curr_buf();
 
 	curr_buf[curr_used].tag = SGL_CXT_TAG;
@@ -171,6 +188,9 @@ void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
    change addEvent_D_guarded too. */
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
+#ifdef COUNT_EVENT_CHECK
+    ++mem_events;
+#endif
 	update_curr_buf();
 
 	curr_buf[curr_used].tag = SGL_MEM_TAG;
@@ -184,6 +204,9 @@ void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 /* See comment on log_0I1Dr. */
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
+#ifdef COUNT_EVENT_CHECK
+    ++mem_events;
+#endif
 	update_curr_buf();
 
 	curr_buf[curr_used].tag = SGL_MEM_TAG;
@@ -214,6 +237,10 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 		return;
 	}
 
+#ifdef COUNT_EVENT_CHECK
+    ++comp_events;
+#endif
+
 	switch (arity)
 	{
 	case Iex_Unop:
@@ -242,6 +269,9 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 
 void SGL_(log_sync)(UChar type, UWord data)
 {
+#ifdef COUNT_EVENT_CHECK
+    ++sync_events;
+#endif
 	update_curr_buf();
 
 	curr_buf[curr_used].tag = SGL_SYNC_TAG;

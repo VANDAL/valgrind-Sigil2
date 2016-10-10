@@ -445,6 +445,9 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                addEvent_G(  &clgs, curr_inode );
                break;
             }
+            case Ist_LLSC:
+               /* XXX Instrumentation for LLSC instructions should be handled below. */
+               break;
             default:
                tl_assert(0);
                break;
