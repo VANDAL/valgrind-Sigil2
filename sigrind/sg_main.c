@@ -1587,8 +1587,7 @@ void CLG_(post_clo_init)(void)
    SGL_(is_in_event_collect_func) = False;
 
    if (SGL_(clo).collect_func == NULL &&
-       SGL_(clo).start_collect_func == NULL &&
-       SGL_(clo).stop_collect_func == NULL)
+       SGL_(clo).start_collect_func == NULL)
    {
       VG_(umsg)("*********************************************\n");
       VG_(umsg)("Beginning event generation from program start\n");
