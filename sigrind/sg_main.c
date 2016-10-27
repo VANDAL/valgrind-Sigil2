@@ -324,135 +324,131 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          curr_inode = next_InstrInfo (&clgs, cia, isize);
       }
 
-      /* Ignore all Sigil event processing when inside a synchronization syscall */
-      if ( EVENT_GENERATION_ENABLED )
+      switch (st->tag) 
       {
-         switch (st->tag) 
+         case Ist_NoOp:
+         case Ist_AbiHint:
+         case Ist_Put:
+         case Ist_PutI:
+         case Ist_MBE:
+         case Ist_Exit:
+            break;
+
+         case Ist_IMark: 
          {
-            case Ist_NoOp:
-            case Ist_AbiHint:
-            case Ist_Put:
-            case Ist_PutI:
-            case Ist_MBE:
-            case Ist_Exit:
-               break;
+            addEvent_Ir( &clgs, curr_inode );
+            break;
+         }
+         case Ist_WrTmp: 
+         {
+            IRExpr* data = st->Ist.WrTmp.data;
+            switch (data->tag)
+            {
+               case Iex_Load:
+               {
+                  IRExpr* aexpr = data->Iex.Load.addr;
+                  // Note also, endianness info is ignored.  I guess
+                  // that's not interesting.
+                  addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
+                  break;
+               }
+               case Iex_Unop:
+               case Iex_Binop:
+               case Iex_Triop:
+               case Iex_Qop:
+                  addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
+                  break;
+               default:
+                  /*don't care*/
+                  break;
+            }
+            break;
+         }
+         case Ist_Store: 
+         {
+            IRExpr* data  = st->Ist.Store.data;
+            IRExpr* aexpr = st->Ist.Store.addr;
+            addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
+            break;
+         }
+         case Ist_StoreG: 
+         {
+            IRStoreG* sg   = st->Ist.StoreG.details;
+            IRExpr*   data = sg->data;
+            IRExpr*   addr = sg->addr;
+            IRType    type = typeOfIRExpr(tyenv, data);
+            tl_assert(type != Ity_INVALID);
+            addEvent_D_guarded( &clgs, curr_inode,
+                                sizeofIRType(type), addr, sg->guard,
+                                True/*isWrite*/ );
+            break;
+         }
+         case Ist_LoadG: 
+         {
+            IRLoadG* lg       = st->Ist.LoadG.details;
+            IRType   type     = Ity_INVALID; /* loaded type */
+            IRType   typeWide = Ity_INVALID; /* after implicit widening */
+            IRExpr*  addr     = lg->addr;
+            typeOfIRLoadGOp(lg->cvt, &typeWide, &type);
+            tl_assert(type != Ity_INVALID);
+            addEvent_D_guarded( &clgs, curr_inode,
+                                sizeofIRType(type), addr, lg->guard,
+                                False/*!isWrite*/ );
+            break;
+         }
+         case Ist_Dirty: 
+         {
+            Int      dataSize;
+            IRDirty* d = st->Ist.Dirty.details;
+            if (d->mFx != Ifx_None) 
+            {
+               /* This dirty helper accesses memory.  Collect the details. */
+               tl_assert(d->mAddr != NULL);
+               tl_assert(d->mSize != 0);
+               dataSize = d->mSize;
 
-            case Ist_IMark: 
-            {
-               addEvent_Ir( &clgs, curr_inode );
-               break;
-            }
-            case Ist_WrTmp: 
-            {
-               IRExpr* data = st->Ist.WrTmp.data;
-               switch (data->tag)
+               if (d->mFx == Ifx_Read || d->mFx == Ifx_Modify)
                {
-                  case Iex_Load:
-                  {
-                     IRExpr* aexpr = data->Iex.Load.addr;
-                     // Note also, endianness info is ignored.  I guess
-                     // that's not interesting.
-                     addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
-                     break;
-                  }
-                  case Iex_Unop:
-                  case Iex_Binop:
-                  case Iex_Triop:
-                  case Iex_Qop:
-                     addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
-                     break;
-                  default:
-                     /*don't care*/
-                     break;
+                  addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
                }
-               break;
-            }
-            case Ist_Store: 
-            {
-               IRExpr* data  = st->Ist.Store.data;
-               IRExpr* aexpr = st->Ist.Store.addr;
-               addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
-               break;
-            }
-            case Ist_StoreG: 
-            {
-               IRStoreG* sg   = st->Ist.StoreG.details;
-               IRExpr*   data = sg->data;
-               IRExpr*   addr = sg->addr;
-               IRType    type = typeOfIRExpr(tyenv, data);
-               tl_assert(type != Ity_INVALID);
-               addEvent_D_guarded( &clgs, curr_inode,
-                                   sizeofIRType(type), addr, sg->guard,
-                                   True/*isWrite*/ );
-               break;
-            }
-            case Ist_LoadG: 
-            {
-               IRLoadG* lg       = st->Ist.LoadG.details;
-               IRType   type     = Ity_INVALID; /* loaded type */
-               IRType   typeWide = Ity_INVALID; /* after implicit widening */
-               IRExpr*  addr     = lg->addr;
-               typeOfIRLoadGOp(lg->cvt, &typeWide, &type);
-               tl_assert(type != Ity_INVALID);
-               addEvent_D_guarded( &clgs, curr_inode,
-                                   sizeofIRType(type), addr, lg->guard,
-                                   False/*!isWrite*/ );
-               break;
-            }
-            case Ist_Dirty: 
-            {
-               Int      dataSize;
-               IRDirty* d = st->Ist.Dirty.details;
-               if (d->mFx != Ifx_None) 
+               if (d->mFx == Ifx_Write || d->mFx == Ifx_Modify)
                {
-                  /* This dirty helper accesses memory.  Collect the details. */
-                  tl_assert(d->mAddr != NULL);
-                  tl_assert(d->mSize != 0);
-                  dataSize = d->mSize;
-
-                  if (d->mFx == Ifx_Read || d->mFx == Ifx_Modify)
-                  {
-                     addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
-                  }
-                  if (d->mFx == Ifx_Write || d->mFx == Ifx_Modify)
-                  {
-                     addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
-                  }
+                  addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
                }
-               else 
-               {
-                  tl_assert(d->mAddr == NULL);
-                  tl_assert(d->mSize == 0);
-               }
-               break;
             }
-            case Ist_CAS: 
+            else 
             {
-               /* We treat it as a read and a write of the location.  I
-                  think that is the same behaviour as it was before IRCAS
-                  was introduced, since prior to that point, the Vex
-                  front ends would translate a lock-prefixed instruction
-                  into a (normal) read followed by a (normal) write. */
-               Int    dataSize;
-               IRCAS* cas = st->Ist.CAS.details;
-               CLG_ASSERT(cas->addr && isIRAtom(cas->addr));
-               CLG_ASSERT(cas->dataLo);
-               dataSize = sizeofIRType(typeOfIRExpr(sbIn->tyenv, cas->dataLo));
-               if (cas->dataHi != NULL)
-                  dataSize *= 2; /* since this is a doubleword-cas */
-               addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
-               addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
-               addEvent_G(  &clgs, curr_inode );
-               break;
+               tl_assert(d->mAddr == NULL);
+               tl_assert(d->mSize == 0);
             }
-            case Ist_LLSC:
-               /* XXX Instrumentation for LLSC instructions should be handled below. */
-               break;
-            default:
-               tl_assert(0);
-               break;
-         } //end switch
-      }
+            break;
+         }
+         case Ist_CAS: 
+         {
+            /* We treat it as a read and a write of the location.  I
+               think that is the same behaviour as it was before IRCAS
+               was introduced, since prior to that point, the Vex
+               front ends would translate a lock-prefixed instruction
+               into a (normal) read followed by a (normal) write. */
+            Int    dataSize;
+            IRCAS* cas = st->Ist.CAS.details;
+            CLG_ASSERT(cas->addr && isIRAtom(cas->addr));
+            CLG_ASSERT(cas->dataLo);
+            dataSize = sizeofIRType(typeOfIRExpr(sbIn->tyenv, cas->dataLo));
+            if (cas->dataHi != NULL)
+               dataSize *= 2; /* since this is a doubleword-cas */
+            addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
+            addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
+            addEvent_G(  &clgs, curr_inode );
+            break;
+         }
+         case Ist_LLSC:
+            /* XXX Instrumentation for LLSC instructions should be handled below. */
+            break;
+         default:
+            tl_assert(0);
+            break;
+      } //end switch
 
 
       /* 
@@ -465,24 +461,20 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
       {
          if (st->Ist.LLSC.storedata == NULL) {
             /* LL */
-            if ( EVENT_GENERATION_ENABLED )
-            {
-               IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
-               addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
-            }
+            IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
+            addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
             /* flush events before LL, should help SC to succeed */
             flushEvents( &clgs );
-         } else if ( EVENT_GENERATION_ENABLED ) {
-            /* SC */
-            IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
-            addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
-            /* I don't know whether the global-bus-lock cost should
-               be attributed to the LL or the SC, but it doesn't
-               really matter since they always have to be used in
-               pairs anyway.  Hence put it (quite arbitrarily) on
-               the SC. */
-            addEvent_G(  &clgs, curr_inode );
          }
+         /* SC */
+         IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
+         addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+         /* I don't know whether the global-bus-lock cost should
+            be attributed to the LL or the SC, but it doesn't
+            really matter since they always have to be used in
+            pairs anyway.  Hence put it (quite arbitrarily) on
+            the SC. */
+         addEvent_G(  &clgs, curr_inode );
       }
       else if ( st->tag == Ist_Exit )
       {
@@ -541,8 +533,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                                  : IRExpr_RdTmp(guardW)
                                  ));
              /* And post the event. */
-             if ( EVENT_GENERATION_ENABLED )
-               addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
+             addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
          }
 
 	      /* We may never reach the next statement, so need to flush
@@ -603,9 +594,8 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          case Iex_Const:
             break; /* boring - branch to known address */
          case Iex_RdTmp:
-            if ( EVENT_GENERATION_ENABLED )
-               /* looks like an indirect branch (branch to unknown) */
-               addEvent_Bi( &clgs, curr_inode, sbIn->next );
+            /* looks like an indirect branch (branch to unknown) */
+            addEvent_Bi( &clgs, curr_inode, sbIn->next );
             break;
          default:
             /* shouldn't happen - if the incoming IR is properly

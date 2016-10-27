@@ -147,40 +147,56 @@ void SGL_(finish_IPC)(void)
  */
 void SGL_(log_1I0D)(InstrInfo* ii)
 {
+    if ( EVENT_GENERATION_ENABLED )
+    {
+
 #ifdef COUNT_EVENT_CHECK
-    cxt_events++;
+        cxt_events++;
 #endif
-	update_curr_buf();
+	    update_curr_buf();
 
-	curr_buf[curr_used].tag = SGL_CXT_TAG;
-	curr_buf[curr_used].cxt.type = SGLPRIM_CXT_INSTR;
-	curr_buf[curr_used].cxt.id = ii->instr_addr;
+	    curr_buf[curr_used].tag = SGL_CXT_TAG;
+	    curr_buf[curr_used].cxt.type = SGLPRIM_CXT_INSTR;
+	    curr_buf[curr_used].cxt.id = ii->instr_addr;
 
-	incr_used();
+	    incr_used();
+    }
 }
 void SGL_(log_2I0D)(InstrInfo* ii1, InstrInfo* ii2)
 {
-	SGL_(log_1I0D)(ii1);
-	SGL_(log_1I0D)(ii2);
+    if ( EVENT_GENERATION_ENABLED )
+    {
+	    SGL_(log_1I0D)(ii1);
+	    SGL_(log_1I0D)(ii2);
+    }
 }
 void SGL_(log_3I0D)(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3)
 {
-	SGL_(log_1I0D)(ii1);
-	SGL_(log_1I0D)(ii2);
-	SGL_(log_1I0D)(ii3);
+    if ( EVENT_GENERATION_ENABLED )
+    {
+	    SGL_(log_1I0D)(ii1);
+	    SGL_(log_1I0D)(ii2);
+	    SGL_(log_1I0D)(ii3);
+    }
 }
 
 /* Instruction doing a read access */
 void SGL_(log_1I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	SGL_(log_1I0D)(ii);
-	SGL_(log_0I1Dr)(ii, data_addr, data_size);
+    if ( EVENT_GENERATION_ENABLED )
+    {
+	    SGL_(log_1I0D)(ii);
+	    SGL_(log_0I1Dr)(ii, data_addr, data_size);
+    }
 }
 /* Instruction doing a write access */
 void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	SGL_(log_1I0D)(ii);
-	SGL_(log_0I1Dw)(ii, data_addr, data_size);
+    if ( EVENT_GENERATION_ENABLED )
+    {
+	    SGL_(log_1I0D)(ii);
+	    SGL_(log_0I1Dw)(ii, data_addr, data_size);
+    }
 }
 
 /* Note that addEvent_D_guarded assumes that log_0I1Dr and log_0I1Dw
@@ -188,83 +204,92 @@ void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
    change addEvent_D_guarded too. */
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
+    if ( EVENT_GENERATION_ENABLED )
+    {
 #ifdef COUNT_EVENT_CHECK
-    ++mem_events;
+        ++mem_events;
 #endif
-	update_curr_buf();
+	    update_curr_buf();
 
-	curr_buf[curr_used].tag = SGL_MEM_TAG;
-	curr_buf[curr_used].mem.type = SGLPRIM_MEM_LOAD;
-	curr_buf[curr_used].mem.begin_addr = data_addr;
-	curr_buf[curr_used].mem.size = data_size;
+	    curr_buf[curr_used].tag = SGL_MEM_TAG;
+	    curr_buf[curr_used].mem.type = SGLPRIM_MEM_LOAD;
+	    curr_buf[curr_used].mem.begin_addr = data_addr;
+	    curr_buf[curr_used].mem.size = data_size;
 
-	incr_used();
+	    incr_used();
+    }
 }
 
 /* See comment on log_0I1Dr. */
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
+    if ( EVENT_GENERATION_ENABLED )
+    {
 #ifdef COUNT_EVENT_CHECK
-    ++mem_events;
+        ++mem_events;
 #endif
-	update_curr_buf();
+	    update_curr_buf();
 
-	curr_buf[curr_used].tag = SGL_MEM_TAG;
-	curr_buf[curr_used].mem.type = SGLPRIM_MEM_STORE;
-	curr_buf[curr_used].mem.begin_addr = data_addr;
-	curr_buf[curr_used].mem.size = data_size;
+	    curr_buf[curr_used].tag = SGL_MEM_TAG;
+	    curr_buf[curr_used].mem.type = SGLPRIM_MEM_STORE;
+	    curr_buf[curr_used].mem.begin_addr = data_addr;
+	    curr_buf[curr_used].mem.size = data_size;
 
-	incr_used();
+	    incr_used();
+    }
 }
 
 void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 {
-	update_curr_buf();
+    if ( EVENT_GENERATION_ENABLED )
+    {
+	    update_curr_buf();
 
-	curr_buf[curr_used].tag = SGL_COMP_TAG;
+	    curr_buf[curr_used].tag = SGL_COMP_TAG;
 
-	if/*IOP*/( type < Ity_F32 )
-	{
-		curr_buf[curr_used].comp.type = SGLPRIM_COMP_IOP;
-	}
-	else if/*FLOP*/( type < Ity_V128 )
-	{
-		curr_buf[curr_used].comp.type = SGLPRIM_COMP_FLOP;
-	}
-	else
-	{
-		/*unhandled*/
-		return;
-	}
+	    if/*IOP*/( type < Ity_F32 )
+	    {
+	    	curr_buf[curr_used].comp.type = SGLPRIM_COMP_IOP;
+	    }
+	    else if/*FLOP*/( type < Ity_V128 )
+	    {
+	    	curr_buf[curr_used].comp.type = SGLPRIM_COMP_FLOP;
+	    }
+	    else
+	    {
+	    	/*unhandled*/
+	    	return;
+	    }
 
 #ifdef COUNT_EVENT_CHECK
-    ++comp_events;
+        ++comp_events;
 #endif
 
-	switch (arity)
-	{
-	case Iex_Unop:
-		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_UNARY;
-		break;
-	case Iex_Binop:
-		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_BINARY;
-		break;
-	case Iex_Triop:
-		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_TERNARY;
-		break;
-	case Iex_Qop:
-		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_QUARTERNARY;
-		break;
-	default:
-		tl_assert(0);
-		break;
-	}
+	    switch (arity)
+	    {
+	    case Iex_Unop:
+	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_UNARY;
+	    	break;
+	    case Iex_Binop:
+	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_BINARY;
+	    	break;
+	    case Iex_Triop:
+	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_TERNARY;
+	    	break;
+	    case Iex_Qop:
+	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_QUARTERNARY;
+	    	break;
+	    default:
+	    	tl_assert(0);
+	    	break;
+	    }
 
-	/* See VEX/pub/libvex_ir.h : IROp for 
-	 * future updates on specific ops */
-	/* TODO unimplemented */
-	
-	incr_used();
+	    /* See VEX/pub/libvex_ir.h : IROp for 
+	     * future updates on specific ops */
+	    /* TODO unimplemented */
+	    
+	    incr_used();
+    }
 }
 
 void SGL_(log_sync)(UChar type, UWord data)
@@ -272,13 +297,13 @@ void SGL_(log_sync)(UChar type, UWord data)
 #ifdef COUNT_EVENT_CHECK
     ++sync_events;
 #endif
-	update_curr_buf();
+    update_curr_buf();
 
-	curr_buf[curr_used].tag = SGL_SYNC_TAG;
-	curr_buf[curr_used].sync.type = type;
-	curr_buf[curr_used].sync.id = data;
+    curr_buf[curr_used].tag = SGL_SYNC_TAG;
+    curr_buf[curr_used].sync.type = type;
+    curr_buf[curr_used].sync.id = data;
 
-	incr_used();
+    incr_used();
 }
 
 void SGL_(log_fn_entry)(fn_node* fn)
