@@ -411,11 +411,18 @@ Bool CLG_(process_cmd_line_option)(const HChar* arg)
    const HChar* tmp_str;
 
    /* XXX tmpdir should not be set by the end-user, only for Sigil2 use */
-   if      VG_STR_CLO(arg, "--tmp-dir", SGL_(clo).tmpdir) {}
-   else if VG_STR_CLO(arg, "--timestamp", SGL_(clo).timestamp) {}
-   else if VG_STR_CLO(arg, "--at-func", SGL_(clo).collect_func) {}
-   else if VG_STR_CLO(arg, "--start-func", SGL_(clo).start_collect_func) {}
-   else if VG_STR_CLO(arg, "--stop-func", SGL_(clo).stop_collect_func) {}
+   if      VG_STR_CLO(arg,  "--tmp-dir",    SGL_(clo).tmpdir) {}
+   else if VG_STR_CLO(arg,  "--timestamp",  SGL_(clo).timestamp) {}
+   else if VG_STR_CLO(arg,  "--at-func",    SGL_(clo).collect_func) {}
+   else if VG_STR_CLO(arg,  "--start-func", SGL_(clo).start_collect_func) {}
+   else if VG_STR_CLO(arg,  "--stop-func",  SGL_(clo).stop_collect_func) {}
+   else if VG_BOOL_CLO(arg, "--gen-mem",    SGL_(clo).gen_mem) {}
+   else if VG_BOOL_CLO(arg, "--gen-comp",   SGL_(clo).gen_comp) {}
+   else if VG_BOOL_CLO(arg, "--gen-sync",   SGL_(clo).gen_sync) {}
+   else if VG_BOOL_CLO(arg, "--gen-instr",  SGL_(clo).gen_instr) {}
+   else if VG_BOOL_CLO(arg, "--gen-fn",     SGL_(clo).gen_fn) {}
+   else if VG_BOOL_CLO(arg, "--gen-cf",     SGL_(clo).gen_cf) {}
+   else if VG_BOOL_CLO(arg, "--gen-bb",     SGL_(clo).gen_bb) {}
 
    /* XXX
     * ML: leftover from Callgrind. Most of these should be left at defaults
@@ -621,11 +628,19 @@ void CLG_(print_debug_usage)(void)
 
 void SGL_(set_clo_defaults)(void)
 {
-  SGL_(clo).tmpdir       = NULL;
-  SGL_(clo).timestamp    = NULL;
-  SGL_(clo).collect_func = NULL;
+  SGL_(clo).tmpdir             = NULL;
+  SGL_(clo).timestamp          = NULL;
+  SGL_(clo).collect_func       = NULL;
   SGL_(clo).start_collect_func = NULL;
-  SGL_(clo).stop_collect_func = NULL;
+  SGL_(clo).stop_collect_func  = NULL;
+  SGL_(clo).gen_mem            = False;
+  SGL_(clo).gen_comp           = False;
+  SGL_(clo).gen_cf             = False;
+  SGL_(clo).gen_sync           = False;
+  SGL_(clo).gen_instr          = False;
+  SGL_(clo).gen_bb             = False;
+  SGL_(clo).gen_fn             = False;
+  SGL_(clo).gen_thr            = False;
 }
 
 void CLG_(set_clo_defaults)(void)

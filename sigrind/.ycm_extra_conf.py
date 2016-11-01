@@ -37,7 +37,7 @@ import ycm_core
 flags = [
 '-Wall',
 '-Wextra',
-'-Werror',
+#'-Werror',
 #'-Wc++98-compat',
 #'-Wno-long-long',
 #'-Wno-variadic-macros',
@@ -76,17 +76,8 @@ flags = [
 '-I','../VEX/priv',
 '-I','../inst/include/valgrind',
 '-I','../../',
-'-I','../../../../..',
-'-I',
-'./ClangCompleter',
-'-isystem',
-'./tests/gmock/gtest',
-'-isystem',
-'./tests/gmock/gtest/include',
-'-isystem',
-'./tests/gmock',
-'-isystem',
-'./tests/gmock/include',
+'-I','../../../../',
+'-I','../../../../../'
 ]
 
 

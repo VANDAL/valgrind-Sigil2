@@ -336,7 +336,8 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
 
          case Ist_IMark: 
          {
-            addEvent_Ir( &clgs, curr_inode );
+            if (SGL_(clo).gen_instr == True)
+               addEvent_Ir( &clgs, curr_inode );
             break;
          }
          case Ist_WrTmp: 
@@ -349,14 +350,16 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                   IRExpr* aexpr = data->Iex.Load.addr;
                   // Note also, endianness info is ignored.  I guess
                   // that's not interesting.
-                  addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
+                  if (SGL_(clo).gen_mem == True)
+                     addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
                   break;
                }
                case Iex_Unop:
                case Iex_Binop:
                case Iex_Triop:
                case Iex_Qop:
-                  addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
+                  if (SGL_(clo).gen_comp == True)
+                     addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
                   break;
                default:
                   /*don't care*/
@@ -368,7 +371,8 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          {
             IRExpr* data  = st->Ist.Store.data;
             IRExpr* aexpr = st->Ist.Store.addr;
-            addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
+            if (SGL_(clo).gen_mem == True)
+               addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
             break;
          }
          case Ist_StoreG: 
@@ -378,9 +382,11 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
             IRExpr*   addr = sg->addr;
             IRType    type = typeOfIRExpr(tyenv, data);
             tl_assert(type != Ity_INVALID);
-            addEvent_D_guarded( &clgs, curr_inode,
-                                sizeofIRType(type), addr, sg->guard,
-                                True/*isWrite*/ );
+            if (SGL_(clo).gen_mem == True) {
+               addEvent_D_guarded( &clgs, curr_inode,
+                                   sizeofIRType(type),
+                                   addr, sg->guard, True/*isWrite*/ );
+            }
             break;
          }
          case Ist_LoadG: 
@@ -391,9 +397,11 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
             IRExpr*  addr     = lg->addr;
             typeOfIRLoadGOp(lg->cvt, &typeWide, &type);
             tl_assert(type != Ity_INVALID);
-            addEvent_D_guarded( &clgs, curr_inode,
-                                sizeofIRType(type), addr, lg->guard,
-                                False/*!isWrite*/ );
+            if (SGL_(clo).gen_mem == True) {
+               addEvent_D_guarded( &clgs, curr_inode,
+                                   sizeofIRType(type), addr, lg->guard,
+                                   False/*!isWrite*/ );
+            }
             break;
          }
          case Ist_Dirty: 
@@ -409,11 +417,13 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
 
                if (d->mFx == Ifx_Read || d->mFx == Ifx_Modify)
                {
-                  addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
+                  if (SGL_(clo).gen_mem == True)
+                     addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
                }
                if (d->mFx == Ifx_Write || d->mFx == Ifx_Modify)
                {
-                  addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
+                  if (SGL_(clo).gen_mem == True)
+                     addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
                }
             }
             else 
@@ -437,8 +447,10 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
             dataSize = sizeofIRType(typeOfIRExpr(sbIn->tyenv, cas->dataLo));
             if (cas->dataHi != NULL)
                dataSize *= 2; /* since this is a doubleword-cas */
-            addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
-            addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
+            if (SGL_(clo).gen_mem == True) {
+               addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
+               addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
+            }
             addEvent_G(  &clgs, curr_inode );
             break;
          }
@@ -462,13 +474,15 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          if (st->Ist.LLSC.storedata == NULL) {
             /* LL */
             IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
-            addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+            if (SGL_(clo).gen_mem == True)
+               addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
             /* flush events before LL, should help SC to succeed */
             flushEvents( &clgs );
          }
          /* SC */
          IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
-         addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+         if (SGL_(clo).gen_mem == True)
+            addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
          /* I don't know whether the global-bus-lock cost should
             be attributed to the LL or the SC, but it doesn't
             really matter since they always have to be used in
@@ -1584,6 +1598,11 @@ void CLG_(post_clo_init)(void)
       VG_(umsg)("*********************************************\n");
       SGL_(is_in_event_collect_func) = True;
    }
+
+   if (SGL_(clo).gen_cf == True)
+      VG_(umsg)("WARNING: Control Flow events unsupported\n");
+   if (SGL_(clo).gen_bb == True)
+      VG_(umsg)("WARNING: Basic Block context events unsupported\n");
 
    if (VG_(clo_vex_control).iropt_register_updates_default
        != VexRegUpdSpAtMemAccess) {

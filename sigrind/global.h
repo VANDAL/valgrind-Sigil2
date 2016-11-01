@@ -80,6 +80,14 @@ struct _SglCommandLineOptions {
   const HChar* collect_func;
   const HChar* start_collect_func;
   const HChar* stop_collect_func;
+  Bool gen_mem;
+  Bool gen_comp;
+  Bool gen_cf;
+  Bool gen_sync;
+  Bool gen_instr;
+  Bool gen_bb;
+  Bool gen_fn;
+  Bool gen_thr;
 };
 
 typedef struct _CommandLineOptions CommandLineOptions;
