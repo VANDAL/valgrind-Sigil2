@@ -331,8 +331,6 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          case Ist_Put:
          case Ist_PutI:
          case Ist_MBE:
-         case Ist_Exit:
-            break;
 
          case Ist_IMark: 
          {
@@ -455,138 +453,123 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
             break;
          }
          case Ist_LLSC:
-            /* XXX Instrumentation for LLSC instructions should be handled below. */
+            if (st->Ist.LLSC.storedata == NULL) {
+               /* LL */
+               IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
+               if (SGL_(clo).gen_mem == True)
+                  addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+               /* flush events before LL, should help SC to succeed */
+               flushEvents( &clgs );
+            } else {
+               /* SC */
+               IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
+               if (SGL_(clo).gen_mem == True)
+                  addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+               /* I don't know whether the global-bus-lock cost should
+                  be attributed to the LL or the SC, but it doesn't
+                  really matter since they always have to be used in
+                  pairs anyway.  Hence put it (quite arbitrarily) on
+                  the SC. */
+               addEvent_G(  &clgs, curr_inode );
+            }
             break;
+         case Ist_Exit: {
+            Bool guest_exit, inverted;
+
+            /* VEX code generation sometimes inverts conditional branches.
+             * As Callgrind counts (conditional) jumps, it has to correct
+             * inversions. The heuristic is the following:
+             * (1) Callgrind switches off SB chasing and unrolling, and
+             *     therefore it assumes that a candidate for inversion only is
+             *     the last conditional branch in an SB.
+             * (2) inversion is assumed if the branch jumps to the address of
+             *     the next guest instruction in memory.
+             * This heuristic is precalculated in CLG_(collectBlockInfo)().
+             *
+             * Branching behavior is also used for branch prediction. Note that
+             * above heuristic is different from what Cachegrind does.
+             * Cachegrind uses (2) for all branches.
+             */
+            if (cJumps+1 == clgs.bb->cjmp_count)
+                inverted = clgs.bb->cjmp_inverted;
+            else
+                inverted = False;
+
+            // call branch predictor only if this is a branch in guest code
+            guest_exit = (st->Ist.Exit.jk == Ijk_Boring) ||
+                         (st->Ist.Exit.jk == Ijk_Call) ||
+                         (st->Ist.Exit.jk == Ijk_Ret);
+
+            if (guest_exit) {
+                /* Stuff to widen the guard expression to a host word, so
+                   we can pass it to the branch predictor simulation
+                   functions easily. */
+                IRType   tyW    = hWordTy;
+                IROp     widen  = tyW==Ity_I32  ? Iop_1Uto32  : Iop_1Uto64;
+                IROp     opXOR  = tyW==Ity_I32  ? Iop_Xor32   : Iop_Xor64;
+                IRTemp   guard1 = newIRTemp(clgs.sbOut->tyenv, Ity_I1);
+                IRTemp   guardW = newIRTemp(clgs.sbOut->tyenv, tyW);
+                IRTemp   guard  = newIRTemp(clgs.sbOut->tyenv, tyW);
+                IRExpr*  one    = tyW==Ity_I32 ? IRExpr_Const(IRConst_U32(1))
+                                               : IRExpr_Const(IRConst_U64(1));
+
+                /* Widen the guard expression. */
+                addStmtToIRSB( clgs.sbOut,
+                               IRStmt_WrTmp( guard1, st->Ist.Exit.guard ));
+                addStmtToIRSB( clgs.sbOut,
+                               IRStmt_WrTmp( guardW,
+                                             IRExpr_Unop(widen,
+                                                         IRExpr_RdTmp(guard1))) );
+                /* If the exit is inverted, invert the sense of the guard. */
+                addStmtToIRSB(
+                        clgs.sbOut,
+                        IRStmt_WrTmp(
+                                guard,
+                                inverted ? IRExpr_Binop(opXOR, IRExpr_RdTmp(guardW), one)
+                                    : IRExpr_RdTmp(guardW)
+                                    ));
+                /* And post the event. */
+                addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
+            }
+
+            /* We may never reach the next statement, so need to flush
+               all outstanding transactions now. */
+            flushEvents( &clgs );
+
+            CLG_ASSERT(clgs.ii_index>0);
+            if (!clgs.seen_before) {
+               ClgJumpKind jk;
+
+               if (st->Ist.Exit.jk == Ijk_Call) jk = jk_Call;
+               else if (st->Ist.Exit.jk == Ijk_Ret) jk = jk_Return;
+               else {
+                 if (IRConst2Addr(st->Ist.Exit.dst) == origAddr + curr_inode->instr_offset + curr_inode->instr_size)
+                    jk = jk_None;
+                 else
+                    jk = jk_Jump;
+               }
+
+               clgs.bb->jmp[cJumps].instr = clgs.ii_index-1;
+               clgs.bb->jmp[cJumps].jmpkind = jk;
+            }
+
+            /* Update global variable jmps_passed before the jump
+             * A correction is needed if VEX inverted the last jump condition
+             */
+            UInt val = inverted ? cJumps+1 : cJumps;
+            addConstMemStoreStmt( clgs.sbOut,
+                (UWord) &CLG_(current_state).jmps_passed,
+                val, hWordTy);
+
+            cJumps++;
+
+            break;
+         }
          default:
             tl_assert(0);
             break;
       } //end switch
 
-
-      /* 
-       * Still do regardless of whether or not we're in a sync syscall.
-       *
-       * ML: not sure what side effects what be introduced
-       * by ignoring Exit statements, even in a syscall...let's avoid that
-       */
-      if ( st->tag == Ist_LLSC )
-      {
-         if (st->Ist.LLSC.storedata == NULL) {
-            /* LL */
-            IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
-            if (SGL_(clo).gen_mem == True)
-               addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
-            /* flush events before LL, should help SC to succeed */
-            flushEvents( &clgs );
-         }
-         /* SC */
-         IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
-         if (SGL_(clo).gen_mem == True)
-            addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
-         /* I don't know whether the global-bus-lock cost should
-            be attributed to the LL or the SC, but it doesn't
-            really matter since they always have to be used in
-            pairs anyway.  Hence put it (quite arbitrarily) on
-            the SC. */
-         addEvent_G(  &clgs, curr_inode );
-      }
-      else if ( st->tag == Ist_Exit )
-      {
-         Bool guest_exit, inverted;
-
-         /* VEX code generation sometimes inverts conditional branches.
-          * As Callgrind counts (conditional) jumps, it has to correct
-          * inversions. The heuristic is the following:
-          * (1) Callgrind switches off SB chasing and unrolling, and
-          *     therefore it assumes that a candidate for inversion only is
-          *     the last conditional branch in an SB.
-          * (2) inversion is assumed if the branch jumps to the address of
-          *     the next guest instruction in memory.
-          * This heuristic is precalculated in CLG_(collectBlockInfo)().
-          *
-          * Branching behavior is also used for branch prediction. Note that
-          * above heuristic is different from what Cachegrind does.
-          * Cachegrind uses (2) for all branches.
-          */
-         if (cJumps+1 == clgs.bb->cjmp_count)
-             inverted = clgs.bb->cjmp_inverted;
-         else
-             inverted = False;
-
-         // call branch predictor only if this is a branch in guest code
-         guest_exit = (st->Ist.Exit.jk == Ijk_Boring) ||
-                      (st->Ist.Exit.jk == Ijk_Call) ||
-                      (st->Ist.Exit.jk == Ijk_Ret);
-
-         if (guest_exit) {
-             /* Stuff to widen the guard expression to a host word, so
-                we can pass it to the branch predictor simulation
-                functions easily. */
-             IRType   tyW    = hWordTy;
-             IROp     widen  = tyW==Ity_I32  ? Iop_1Uto32  : Iop_1Uto64;
-             IROp     opXOR  = tyW==Ity_I32  ? Iop_Xor32   : Iop_Xor64;
-             IRTemp   guard1 = newIRTemp(clgs.sbOut->tyenv, Ity_I1);
-             IRTemp   guardW = newIRTemp(clgs.sbOut->tyenv, tyW);
-             IRTemp   guard  = newIRTemp(clgs.sbOut->tyenv, tyW);
-             IRExpr*  one    = tyW==Ity_I32 ? IRExpr_Const(IRConst_U32(1))
-                                            : IRExpr_Const(IRConst_U64(1));
-
-             /* Widen the guard expression. */
-             addStmtToIRSB( clgs.sbOut,
-                            IRStmt_WrTmp( guard1, st->Ist.Exit.guard ));
-             addStmtToIRSB( clgs.sbOut,
-                            IRStmt_WrTmp( guardW,
-                                          IRExpr_Unop(widen,
-                                                      IRExpr_RdTmp(guard1))) );
-             /* If the exit is inverted, invert the sense of the guard. */
-             addStmtToIRSB(
-                     clgs.sbOut,
-                     IRStmt_WrTmp(
-                             guard,
-                             inverted ? IRExpr_Binop(opXOR, IRExpr_RdTmp(guardW), one)
-                                 : IRExpr_RdTmp(guardW)
-                                 ));
-             /* And post the event. */
-             addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
-         }
-
-	      /* We may never reach the next statement, so need to flush
-	         all outstanding transactions now. */
-	      flushEvents( &clgs );
-
-	      CLG_ASSERT(clgs.ii_index>0);
-	      if (!clgs.seen_before) 
-         {
-	         ClgJumpKind jk;
-
-	         if (st->Ist.Exit.jk == Ijk_Call)
-            {
-               jk = jk_Call;
-            }
-	         else if (st->Ist.Exit.jk == Ijk_Ret)
-            {
-               jk = jk_Return;
-            }
-	         else 
-            {
-		         if (IRConst2Addr(st->Ist.Exit.dst) == origAddr + curr_inode->instr_offset + curr_inode->instr_size)
-		            jk = jk_None;
-		         else
-		            jk = jk_Jump;
-	         }
-	         clgs.bb->jmp[cJumps].instr = clgs.ii_index-1;
-	         clgs.bb->jmp[cJumps].jmpkind = jk;
-	      }
-
-	      /* Update global variable jmps_passed before the jump
-	       * A correction is needed if VEX inverted the last jump condition
-	      */
-	      UInt val = inverted ? cJumps+1 : cJumps;
-	      addConstMemStoreStmt( clgs.sbOut,
-			  (UWord) &CLG_(current_state).jmps_passed,
-			  val, hWordTy);
-	      cJumps++;
-      } //end if Ist_Exit
 
       /* Copy the original statement */
       addStmtToIRSB( clgs.sbOut, st );
