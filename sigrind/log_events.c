@@ -29,6 +29,7 @@ Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
 #include "coregrind/pub_core_aspacemgr.h"
 #include "coregrind/pub_core_syscall.h"
+#include "include/pub_tool_vki.h" // errnum
 #include "pub_tool_basics.h"
 
 //FIXME these aren't needed for Sigil, but deleting them causes 
@@ -48,14 +49,15 @@ static int open_fifo(const HChar *fifo_path, int flags);
 static SigrindSharedData* shmem;
 static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags);
 
-static BufferedSglEv* curr_buf;
-static Bool is_full[SIGRIND_BUFNUM];
+static EventBuffer* curr_buf;
+static Bool is_full[NUM_BUFFERS];
 static UInt curr_idx;
 
 static UInt curr_used;
 static inline void incr_used(void);
 static inline void update_curr_buf(void);
 
+//#define COUNT_EVENT_CHECK
 #ifdef COUNT_EVENT_CHECK
 static unsigned long long mem_events = 0;
 static unsigned long long comp_events = 0;
@@ -65,32 +67,27 @@ static unsigned long long cxt_events = 0;
 
 void SGL_(init_IPC)()
 {
-	if (SGL_(clo).tmpdir == NULL)
+	if (SGL_(clo).ipc_dir == NULL)
 	{
-	   VG_(fmsg)("No --tmp-dir argument found, shutting down...\n");
-	   VG_(exit)(1);
-	}
-	else if (SGL_(clo).timestamp == NULL)
-	{
-	   VG_(fmsg)("No --timestamp argument found, shutting down...\n");
+	   VG_(fmsg)("No --ipc-dir argument found, shutting down...\n");
 	   VG_(exit)(1);
 	}
 
-	Int tmpdir_len = VG_(strlen)(SGL_(clo).tmpdir);
+	Int ipc_dir_len = VG_(strlen)(SGL_(clo).ipc_dir);
 	Int filename_len;
 
 	//+1 for '/'; len should be strlen + null
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2;
+	filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 2;
 	HChar shmem_path[filename_len];
-	VG_(snprintf)(shmem_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_SHMEM_NAME, SGL_(clo).timestamp); 
+	VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_SHMEM_NAME); 
 
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2; 
+	filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 2; 
 	HChar emptyfifo_path[filename_len];
-	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_EMPTYFIFO_NAME, SGL_(clo).timestamp); 
+	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_EMPTYFIFO_NAME); 
 
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2; 
+	filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 2; 
 	HChar fullfifo_path[filename_len];
-	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_FULLFIFO_NAME, SGL_(clo).timestamp); 
+	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_FULLFIFO_NAME); 
 
 	///////////////////
 	// init values 
@@ -105,11 +102,11 @@ void SGL_(init_IPC)()
 
 	curr_used = 0;
 	curr_idx = 0;
-	for (UInt i=0; i<SIGRIND_BUFNUM; ++i)
+	for (UInt i=0; i<NUM_BUFFERS; ++i)
 	{
 		is_full[i] = False;
 	}
-	curr_buf = shmem->buf[0];
+    curr_buf = &shmem->sigrind_buf[0];
 }
 
 void SGL_(finish_IPC)(void)
@@ -155,9 +152,9 @@ void SGL_(log_1I0D)(InstrInfo* ii)
 #endif
 	    update_curr_buf();
 
-	    curr_buf[curr_used].tag = SGL_CXT_TAG;
-	    curr_buf[curr_used].cxt.type = SGLPRIM_CXT_INSTR;
-	    curr_buf[curr_used].cxt.id = ii->instr_addr;
+	    curr_buf->events[curr_used].tag = SGL_CXT_TAG;
+	    curr_buf->events[curr_used].cxt.type = SGLPRIM_CXT_INSTR;
+	    curr_buf->events[curr_used].cxt.id = ii->instr_addr;
 
 	    incr_used();
     }
@@ -211,10 +208,10 @@ void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 #endif
 	    update_curr_buf();
 
-	    curr_buf[curr_used].tag = SGL_MEM_TAG;
-	    curr_buf[curr_used].mem.type = SGLPRIM_MEM_LOAD;
-	    curr_buf[curr_used].mem.begin_addr = data_addr;
-	    curr_buf[curr_used].mem.size = data_size;
+	    curr_buf->events[curr_used].tag = SGL_MEM_TAG;
+	    curr_buf->events[curr_used].mem.type = SGLPRIM_MEM_LOAD;
+	    curr_buf->events[curr_used].mem.begin_addr = data_addr;
+	    curr_buf->events[curr_used].mem.size = data_size;
 
 	    incr_used();
     }
@@ -230,10 +227,10 @@ void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 #endif
 	    update_curr_buf();
 
-	    curr_buf[curr_used].tag = SGL_MEM_TAG;
-	    curr_buf[curr_used].mem.type = SGLPRIM_MEM_STORE;
-	    curr_buf[curr_used].mem.begin_addr = data_addr;
-	    curr_buf[curr_used].mem.size = data_size;
+	    curr_buf->events[curr_used].tag = SGL_MEM_TAG;
+	    curr_buf->events[curr_used].mem.type = SGLPRIM_MEM_STORE;
+	    curr_buf->events[curr_used].mem.begin_addr = data_addr;
+	    curr_buf->events[curr_used].mem.size = data_size;
 
 	    incr_used();
     }
@@ -245,15 +242,15 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
     {
 	    update_curr_buf();
 
-	    curr_buf[curr_used].tag = SGL_COMP_TAG;
+	    curr_buf->events[curr_used].tag = SGL_COMP_TAG;
 
 	    if/*IOP*/( type < Ity_F32 )
 	    {
-	    	curr_buf[curr_used].comp.type = SGLPRIM_COMP_IOP;
+	    	curr_buf->events[curr_used].comp.type = SGLPRIM_COMP_IOP;
 	    }
 	    else if/*FLOP*/( type < Ity_V128 )
 	    {
-	    	curr_buf[curr_used].comp.type = SGLPRIM_COMP_FLOP;
+	    	curr_buf->events[curr_used].comp.type = SGLPRIM_COMP_FLOP;
 	    }
 	    else
 	    {
@@ -268,16 +265,16 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	    switch (arity)
 	    {
 	    case Iex_Unop:
-	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_UNARY;
+	    	curr_buf->events[curr_used].comp.arity = SGLPRIM_COMP_UNARY;
 	    	break;
 	    case Iex_Binop:
-	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_BINARY;
+	    	curr_buf->events[curr_used].comp.arity = SGLPRIM_COMP_BINARY;
 	    	break;
 	    case Iex_Triop:
-	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_TERNARY;
+	    	curr_buf->events[curr_used].comp.arity = SGLPRIM_COMP_TERNARY;
 	    	break;
 	    case Iex_Qop:
-	    	curr_buf[curr_used].comp.arity = SGLPRIM_COMP_QUARTERNARY;
+	    	curr_buf->events[curr_used].comp.arity = SGLPRIM_COMP_QUARTERNARY;
 	    	break;
 	    default:
 	    	tl_assert(0);
@@ -299,9 +296,9 @@ void SGL_(log_sync)(UChar type, UWord data)
 #endif
     update_curr_buf();
 
-    curr_buf[curr_used].tag = SGL_SYNC_TAG;
-    curr_buf[curr_used].sync.type = type;
-    curr_buf[curr_used].sync.id = data;
+    curr_buf->events[curr_used].tag = SGL_SYNC_TAG;
+    curr_buf->events[curr_used].sync.type = type;
+    curr_buf->events[curr_used].sync.id = data;
 
     incr_used();
 }
@@ -354,14 +351,28 @@ static int open_fifo(const HChar *fifo_path, int flags)
 
 static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
 {
+    /* Wait a bit for the Sigil2 interface to come up.
+     * Valgrind doesn't provide an interface to sleep itself, so just chew
+     * through cycles for a while.
+     * XXX Not a good solution for a single-core machine */
+    long wait = 10000000; // fudge number
+    while (VG_(access)(shmem_path, False, False, False) != 0)
+    {
+        if (wait-- <= 0)
+        {
+		    VG_(umsg)("Cannot find shared_mem file %s\n", shmem_path);
+		    VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+            VG_(exit)(1);
+        }
+    }
 
 	SysRes res = VG_(open) (shmem_path, flags, 0600);
 	if (sr_isError (res)) 
 	{
-		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
-		VG_(umsg)("cannot open shared_mem file %s\n", shmem_path);
+		VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("Cannot open shared_mem file %s\n", shmem_path);
 		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-		VG_(exit) (1);
+		VG_(exit)(1);
 	} 
 
 	int shared_mem_fd = sr_Res(res);
@@ -371,10 +382,10 @@ static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
 		 shared_mem_fd, (Off64T)0);
 	if (sr_isError(res)) 
 	{
-		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
 		VG_(umsg)("error VG_(am_shared_mmap_file_float_valgrind) %s\n", shmem_path);
 		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-		VG_(exit) (1);
+		VG_(exit)(1);
 	}  
 
 	Addr addr_shared = sr_Res (res);
@@ -386,7 +397,7 @@ static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
 /* wait for an empty buffer notification if current buffer is full */
 static inline void update_curr_buf(void)
 {
-	if ( is_full[curr_idx] )
+	if (is_full[curr_idx])
 	{
 		if ( VG_(read)(emptyfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
 		{
@@ -395,21 +406,22 @@ static inline void update_curr_buf(void)
 			VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
 			VG_(exit)(1);
 		}
-		tl_assert(curr_idx < SIGRIND_BUFNUM);
+		tl_assert(curr_idx < NUM_BUFFERS);
 		is_full[curr_idx] = 0;
-		curr_buf = shmem->buf[curr_idx];
+		curr_buf = &shmem->sigrind_buf[curr_idx];
 	}
 }
 
 /* inform sigil2 that the current buffer is used, increment to next buffer */
 static inline void incr_used(void)
 {
-	tl_assert( !(curr_used > SIGRIND_BUFSIZE) );
-	if (++curr_used == SIGRIND_BUFSIZE)
+	tl_assert(curr_used <= MAX_EVENTS);
+    curr_buf->events_used = ++curr_used;
+	if (curr_used == MAX_EVENTS)
 	{
 		is_full[curr_idx] = True;
 
-		if ( VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
+		if (VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx))
 		{
 			VG_(umsg)("error VG_(write)\n");
 			VG_(umsg)("error writing to Sigrind fifo\n");
@@ -417,12 +429,12 @@ static inline void incr_used(void)
 			VG_(exit)(1);
 		}
 
-		if (++curr_idx == SIGRIND_BUFNUM)
+		if (++curr_idx == NUM_BUFFERS)
 		{
 			curr_idx = 0;
 		}
 
-		curr_buf = shmem->buf[curr_idx];
+		curr_buf = &shmem->sigrind_buf[curr_idx];
 		curr_used = 0;
 	}
 }

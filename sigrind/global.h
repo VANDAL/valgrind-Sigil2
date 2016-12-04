@@ -75,8 +75,7 @@
 
 typedef struct _SglCommandLineOptions SglCommandLineOptions;
 struct _SglCommandLineOptions {
-  const HChar* tmpdir;
-  const HChar* timestamp;
+  const HChar* ipc_dir;
   const HChar* collect_func;
   const HChar* start_collect_func;
   const HChar* stop_collect_func;

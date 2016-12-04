@@ -411,8 +411,7 @@ Bool CLG_(process_cmd_line_option)(const HChar* arg)
    const HChar* tmp_str;
 
    /* XXX tmpdir should not be set by the end-user, only for Sigil2 use */
-   if      VG_STR_CLO(arg,  "--tmp-dir",    SGL_(clo).tmpdir) {}
-   else if VG_STR_CLO(arg,  "--timestamp",  SGL_(clo).timestamp) {}
+   if      VG_STR_CLO(arg,  "--ipc-dir",    SGL_(clo).ipc_dir) {}
    else if VG_STR_CLO(arg,  "--at-func",    SGL_(clo).collect_func) {}
    else if VG_STR_CLO(arg,  "--start-func", SGL_(clo).start_collect_func) {}
    else if VG_STR_CLO(arg,  "--stop-func",  SGL_(clo).stop_collect_func) {}
@@ -628,8 +627,7 @@ void CLG_(print_debug_usage)(void)
 
 void SGL_(set_clo_defaults)(void)
 {
-  SGL_(clo).tmpdir             = NULL;
-  SGL_(clo).timestamp          = NULL;
+  SGL_(clo).ipc_dir            = NULL;
   SGL_(clo).collect_func       = NULL;
   SGL_(clo).start_collect_func = NULL;
   SGL_(clo).stop_collect_func  = NULL;
