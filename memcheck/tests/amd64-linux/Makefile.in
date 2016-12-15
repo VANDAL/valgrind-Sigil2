@@ -111,7 +111,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -119,7 +120,8 @@ host_triplet = @host@
 @COMPILER_IS_CLANG_TRUE@	-Wno-uninitialized -Wno-unused-value # \
 @COMPILER_IS_CLANG_TRUE@	clang 3.0.0
 @COMPILER_IS_CLANG_TRUE@am__append_7 = -Wno-unused-private-field    # drd/tests/tsan_unittest.cpp
-check_PROGRAMS = defcfaexpr$(EXEEXT) int3-amd64$(EXEEXT)
+check_PROGRAMS = access_below_sp$(EXEEXT) defcfaexpr$(EXEEXT) \
+	int3-amd64$(EXEEXT)
 subdir = memcheck/tests/amd64-linux
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -131,6 +133,9 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+access_below_sp_SOURCES = access_below_sp.c
+access_below_sp_OBJECTS = access_below_sp.$(OBJEXT)
+access_below_sp_LDADD = $(LDADD)
 am_defcfaexpr_OBJECTS = defcfaexpr.$(OBJEXT)
 defcfaexpr_OBJECTS = $(am_defcfaexpr_OBJECTS)
 defcfaexpr_LDADD = $(LDADD)
@@ -172,8 +177,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(defcfaexpr_SOURCES) int3-amd64.c
-DIST_SOURCES = $(defcfaexpr_SOURCES) int3-amd64.c
+SOURCES = access_below_sp.c $(defcfaexpr_SOURCES) int3-amd64.c
+DIST_SOURCES = access_below_sp.c $(defcfaexpr_SOURCES) int3-amd64.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -278,6 +283,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -310,6 +316,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -470,14 +477,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -501,7 +508,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -568,6 +576,10 @@ dist_noinst_SCRIPTS = \
 	filter_stderr filter_defcfaexpr
 
 EXTRA_DIST = \
+	access_below_sp_1.vgtest \
+	access_below_sp_1.stderr.exp access_below_sp_1.stdout.exp \
+	access_below_sp_2.vgtest \
+	access_below_sp_2.stderr.exp access_below_sp_2.stdout.exp \
 	defcfaexpr.vgtest defcfaexpr.stderr.exp \
 	int3-amd64.vgtest int3-amd64.stderr.exp int3-amd64.stdout.exp
 
@@ -610,6 +622,10 @@ $(am__aclocal_m4_deps):
 clean-checkPROGRAMS:
 	-test -z "$(check_PROGRAMS)" || rm -f $(check_PROGRAMS)
 
+access_below_sp$(EXEEXT): $(access_below_sp_OBJECTS) $(access_below_sp_DEPENDENCIES) $(EXTRA_access_below_sp_DEPENDENCIES) 
+	@rm -f access_below_sp$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(access_below_sp_OBJECTS) $(access_below_sp_LDADD) $(LIBS)
+
 defcfaexpr$(EXEEXT): $(defcfaexpr_OBJECTS) $(defcfaexpr_DEPENDENCIES) $(EXTRA_defcfaexpr_DEPENDENCIES) 
 	@rm -f defcfaexpr$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(defcfaexpr_OBJECTS) $(defcfaexpr_LDADD) $(LIBS)
@@ -624,6 +640,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/access_below_sp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/defcfaexpr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/int3-amd64.Po@am__quote@
 

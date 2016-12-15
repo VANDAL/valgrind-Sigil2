@@ -111,7 +111,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -121,14 +122,15 @@ host_triplet = @host@
 @COMPILER_IS_CLANG_TRUE@am__append_7 = -Wno-unused-private-field    # drd/tests/tsan_unittest.cpp
 check_PROGRAMS = allexec$(EXEEXT) arithmetic_instruction$(EXEEXT) \
 	branch_and_jump_instructions$(EXEEXT) branches$(EXEEXT) \
-	cvm_bbit$(EXEEXT) cvm_ins$(EXEEXT) cvm_lx_ins$(EXEEXT) \
-	cvm_atomic$(EXEEXT) cvm_atomic_thread$(EXEEXT) \
-	extract_insert_bit_field$(EXEEXT) fpu_arithmetic$(EXEEXT) \
-	fpu_branches$(EXEEXT) fpu_control_word$(EXEEXT) \
-	fpu_load_store$(EXEEXT) load_indexed_instructions$(EXEEXT) \
-	load_store$(EXEEXT) load_store_multiple$(EXEEXT) \
-	load_store_unaligned$(EXEEXT) logical_instructions$(EXEEXT) \
-	move_instructions$(EXEEXT) rotate_swap$(EXEEXT) round$(EXEEXT) \
+	change_fp_mode$(EXEEXT) cvm_bbit$(EXEEXT) cvm_ins$(EXEEXT) \
+	cvm_lx_ins$(EXEEXT) cvm_atomic$(EXEEXT) \
+	cvm_atomic_thread$(EXEEXT) extract_insert_bit_field$(EXEEXT) \
+	fpu_arithmetic$(EXEEXT) fpu_branches$(EXEEXT) \
+	fpu_control_word$(EXEEXT) fpu_load_store$(EXEEXT) \
+	load_indexed_instructions$(EXEEXT) load_store$(EXEEXT) \
+	load_store_multiple$(EXEEXT) load_store_unaligned$(EXEEXT) \
+	logical_instructions$(EXEEXT) move_instructions$(EXEEXT) \
+	rotate_swap$(EXEEXT) round$(EXEEXT) \
 	shift_instructions$(EXEEXT) test_block_size$(EXEEXT) \
 	test_fcsr$(EXEEXT) test_math$(EXEEXT) unaligned_load$(EXEEXT) \
 	unaligned_load_store$(EXEEXT)
@@ -158,6 +160,9 @@ branch_and_jump_instructions_LDADD = $(LDADD)
 branches_SOURCES = branches.c
 branches_OBJECTS = branches.$(OBJEXT)
 branches_LDADD = $(LDADD)
+change_fp_mode_SOURCES = change_fp_mode.c
+change_fp_mode_OBJECTS = change_fp_mode.$(OBJEXT)
+change_fp_mode_LDADD = $(LDADD)
 cvm_atomic_SOURCES = cvm_atomic.c
 cvm_atomic_OBJECTS = cvm_atomic-cvm_atomic.$(OBJEXT)
 cvm_atomic_LDADD = $(LDADD)
@@ -294,20 +299,20 @@ am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = allexec.c arithmetic_instruction.c \
-	branch_and_jump_instructions.c branches.c cvm_atomic.c \
-	cvm_atomic_thread.c cvm_bbit.c cvm_ins.c cvm_lx_ins.c \
-	extract_insert_bit_field.c fpu_arithmetic.c fpu_branches.c \
-	fpu_control_word.c fpu_load_store.c \
+	branch_and_jump_instructions.c branches.c change_fp_mode.c \
+	cvm_atomic.c cvm_atomic_thread.c cvm_bbit.c cvm_ins.c \
+	cvm_lx_ins.c extract_insert_bit_field.c fpu_arithmetic.c \
+	fpu_branches.c fpu_control_word.c fpu_load_store.c \
 	load_indexed_instructions.c load_store.c load_store_multiple.c \
 	load_store_unaligned.c logical_instructions.c \
 	move_instructions.c rotate_swap.c round.c shift_instructions.c \
 	test_block_size.c test_fcsr.c $(test_math_SOURCES) \
 	unaligned_load.c unaligned_load_store.c
 DIST_SOURCES = allexec.c arithmetic_instruction.c \
-	branch_and_jump_instructions.c branches.c cvm_atomic.c \
-	cvm_atomic_thread.c cvm_bbit.c cvm_ins.c cvm_lx_ins.c \
-	extract_insert_bit_field.c fpu_arithmetic.c fpu_branches.c \
-	fpu_control_word.c fpu_load_store.c \
+	branch_and_jump_instructions.c branches.c change_fp_mode.c \
+	cvm_atomic.c cvm_atomic_thread.c cvm_bbit.c cvm_ins.c \
+	cvm_lx_ins.c extract_insert_bit_field.c fpu_arithmetic.c \
+	fpu_branches.c fpu_control_word.c fpu_load_store.c \
 	load_indexed_instructions.c load_store.c load_store_multiple.c \
 	load_store_unaligned.c logical_instructions.c \
 	move_instructions.c rotate_swap.c round.c shift_instructions.c \
@@ -417,6 +422,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -449,6 +455,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -609,14 +616,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -640,7 +647,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -711,6 +719,7 @@ EXTRA_DIST = \
 	branch_and_jump_instructions.stdout.exp \
 	branch_and_jump_instructions.stderr.exp branch_and_jump_instructions.vgtest \
 	branches.stdout.exp branches.stderr.exp branches.vgtest \
+	change_fp_mode.stderr.exp change_fp_mode.stdout.exp change_fp_mode.vgtest \
 	cvm_bbit.stdout.exp cvm_bbit.stdout.exp-non-octeon \
 	cvm_bbit.stderr.exp cvm_bbit.vgtest \
 	cvm_ins.stdout.exp cvm_ins.stdout.exp-non-octeon \
@@ -826,6 +835,10 @@ branches$(EXEEXT): $(branches_OBJECTS) $(branches_DEPENDENCIES) $(EXTRA_branches
 	@rm -f branches$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(branches_OBJECTS) $(branches_LDADD) $(LIBS)
 
+change_fp_mode$(EXEEXT): $(change_fp_mode_OBJECTS) $(change_fp_mode_DEPENDENCIES) $(EXTRA_change_fp_mode_DEPENDENCIES) 
+	@rm -f change_fp_mode$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(change_fp_mode_OBJECTS) $(change_fp_mode_LDADD) $(LIBS)
+
 cvm_atomic$(EXEEXT): $(cvm_atomic_OBJECTS) $(cvm_atomic_DEPENDENCIES) $(EXTRA_cvm_atomic_DEPENDENCIES) 
 	@rm -f cvm_atomic$(EXEEXT)
 	$(AM_V_CCLD)$(cvm_atomic_LINK) $(cvm_atomic_OBJECTS) $(cvm_atomic_LDADD) $(LIBS)
@@ -932,6 +945,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arithmetic_instruction.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/branch_and_jump_instructions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/branches.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/change_fp_mode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cvm_atomic-cvm_atomic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cvm_atomic_thread-cvm_atomic_thread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cvm_bbit-cvm_bbit.Po@am__quote@

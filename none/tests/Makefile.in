@@ -112,7 +112,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -157,22 +158,23 @@ check_PROGRAMS = args$(EXEEXT) async-sigs$(EXEEXT) bitfield1$(EXEEXT) \
 	libvexmultiarch_test$(EXEEXT) manythreads$(EXEEXT) \
 	mmap_fcntl_bug$(EXEEXT) munmap_exe$(EXEEXT) \
 	map_unaligned$(EXEEXT) map_unmap$(EXEEXT) mq$(EXEEXT) \
-	pending$(EXEEXT) procfs-cmdline-exe$(EXEEXT) \
+	nocwd$(EXEEXT) pending$(EXEEXT) procfs-cmdline-exe$(EXEEXT) \
+	pselect_alarm$(EXEEXT) pselect_sigmask_null$(EXEEXT) \
 	pth_atfork1$(EXEEXT) pth_blockedsig$(EXEEXT) \
 	pth_cancel1$(EXEEXT) pth_cancel2$(EXEEXT) \
 	pth_cvsimple$(EXEEXT) pth_empty$(EXEEXT) pth_exit$(EXEEXT) \
 	pth_exit2$(EXEEXT) pth_mutexspeed$(EXEEXT) pth_once$(EXEEXT) \
-	pth_rwlock$(EXEEXT) pth_stackalign$(EXEEXT) rcrl$(EXEEXT) \
-	readline1$(EXEEXT) require-text-symbol$(EXEEXT) \
-	res_search$(EXEEXT) resolv$(EXEEXT) rlimit_nofile$(EXEEXT) \
-	selfrun$(EXEEXT) sem$(EXEEXT) semlimit$(EXEEXT) \
-	sha1_test$(EXEEXT) shortpush$(EXEEXT) shorts$(EXEEXT) \
-	stackgrowth$(EXEEXT) sigstackgrowth$(EXEEXT) \
-	syscall-restart1$(EXEEXT) syscall-restart2$(EXEEXT) \
-	syslog$(EXEEXT) system$(EXEEXT) thread-exits$(EXEEXT) \
-	threaded-fork$(EXEEXT) threadederrno$(EXEEXT) \
-	timestamp$(EXEEXT) tls$(EXEEXT) tls.so$(EXEEXT) \
-	tls2.so$(EXEEXT) unit_debuglog$(EXEEXT) \
+	pth_rwlock$(EXEEXT) pth_stackalign$(EXEEXT) \
+	pth_term_signal$(EXEEXT) rcrl$(EXEEXT) readline1$(EXEEXT) \
+	require-text-symbol$(EXEEXT) res_search$(EXEEXT) \
+	resolv$(EXEEXT) rlimit_nofile$(EXEEXT) selfrun$(EXEEXT) \
+	sem$(EXEEXT) semlimit$(EXEEXT) sha1_test$(EXEEXT) \
+	shortpush$(EXEEXT) shorts$(EXEEXT) stackgrowth$(EXEEXT) \
+	sigstackgrowth$(EXEEXT) syscall-restart1$(EXEEXT) \
+	syscall-restart2$(EXEEXT) syslog$(EXEEXT) system$(EXEEXT) \
+	thread-exits$(EXEEXT) threaded-fork$(EXEEXT) \
+	threadederrno$(EXEEXT) timestamp$(EXEEXT) tls$(EXEEXT) \
+	tls.so$(EXEEXT) tls2.so$(EXEEXT) unit_debuglog$(EXEEXT) \
 	valgrind_cpp_test$(EXEEXT) vgprintf$(EXEEXT) \
 	coolo_sigaction$(EXEEXT) gxx304$(EXEEXT) \
 	process_vm_readv_writev$(EXEEXT) $(am__EXEEXT_1) \
@@ -180,9 +182,11 @@ check_PROGRAMS = args$(EXEEXT) async-sigs$(EXEEXT) bitfield1$(EXEEXT) \
 @HAVE_NESTED_FUNCTIONS_TRUE@am__append_27 = nestedfns
 
 # This doesn't appear to be compilable on Darwin.
-@VGCONF_OS_IS_DARWIN_FALSE@am__append_28 = rlimit64_nofile 
+@VGCONF_OS_IS_DARWIN_FALSE@am__append_28 = rlimit64_nofile \
+@VGCONF_OS_IS_DARWIN_FALSE@        ppoll_alarm
 
-# clang does now know -ansi
+
+# clang does not know -ansi
 @COMPILER_IS_CLANG_FALSE@am__append_29 = ansi
 @BUILD_IFUNC_TESTS_TRUE@am__append_30 = ifunc
 @VGCONF_OS_IS_SOLARIS_TRUE@am__append_31 = --std=c99
@@ -201,7 +205,8 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 @HAVE_NESTED_FUNCTIONS_TRUE@am__EXEEXT_1 = nestedfns$(EXEEXT)
-@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_2 = rlimit64_nofile$(EXEEXT)
+@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_2 = rlimit64_nofile$(EXEEXT) \
+@VGCONF_OS_IS_DARWIN_FALSE@	ppoll_alarm$(EXEEXT)
 @COMPILER_IS_CLANG_FALSE@am__EXEEXT_3 = ansi$(EXEEXT)
 @BUILD_IFUNC_TESTS_TRUE@am__EXEEXT_4 = ifunc$(EXEEXT)
 ansi_SOURCES = ansi.c
@@ -334,15 +339,27 @@ nestedfns_OBJECTS = nestedfns-nestedfns.$(OBJEXT)
 nestedfns_LDADD = $(LDADD)
 nestedfns_LINK = $(CCLD) $(nestedfns_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
+nocwd_SOURCES = nocwd.c
+nocwd_OBJECTS = nocwd.$(OBJEXT)
+nocwd_LDADD = $(LDADD)
 pending_SOURCES = pending.c
 pending_OBJECTS = pending.$(OBJEXT)
 pending_LDADD = $(LDADD)
+ppoll_alarm_SOURCES = ppoll_alarm.c
+ppoll_alarm_OBJECTS = ppoll_alarm.$(OBJEXT)
+ppoll_alarm_DEPENDENCIES =
 process_vm_readv_writev_SOURCES = process_vm_readv_writev.c
 process_vm_readv_writev_OBJECTS = process_vm_readv_writev.$(OBJEXT)
 process_vm_readv_writev_LDADD = $(LDADD)
 procfs_cmdline_exe_SOURCES = procfs-cmdline-exe.c
 procfs_cmdline_exe_OBJECTS = procfs-cmdline-exe.$(OBJEXT)
 procfs_cmdline_exe_LDADD = $(LDADD)
+pselect_alarm_SOURCES = pselect_alarm.c
+pselect_alarm_OBJECTS = pselect_alarm.$(OBJEXT)
+pselect_alarm_DEPENDENCIES =
+pselect_sigmask_null_SOURCES = pselect_sigmask_null.c
+pselect_sigmask_null_OBJECTS = pselect_sigmask_null.$(OBJEXT)
+pselect_sigmask_null_LDADD = $(LDADD)
 pth_atfork1_SOURCES = pth_atfork1.c
 pth_atfork1_OBJECTS = pth_atfork1.$(OBJEXT)
 pth_atfork1_DEPENDENCIES =
@@ -383,6 +400,9 @@ pth_rwlock_LINK = $(CCLD) $(pth_rwlock_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 pth_stackalign_SOURCES = pth_stackalign.c
 pth_stackalign_OBJECTS = pth_stackalign.$(OBJEXT)
 pth_stackalign_DEPENDENCIES =
+pth_term_signal_SOURCES = pth_term_signal.c
+pth_term_signal_OBJECTS = pth_term_signal.$(OBJEXT)
+pth_term_signal_DEPENDENCIES =
 rcrl_SOURCES = rcrl.c
 rcrl_OBJECTS = rcrl.$(OBJEXT)
 rcrl_LDADD = $(LDADD)
@@ -535,17 +555,18 @@ SOURCES = ansi.c args.c async-sigs.c bitfield1.c bug129866.c \
 	$(gxx304_SOURCES) ifunc.c ioctl_moans.c libvex_test.c \
 	$(libvexmultiarch_test_SOURCES) manythreads.c map_unaligned.c \
 	map_unmap.c mmap_fcntl_bug.c mq.c munmap_exe.c nestedfns.c \
-	pending.c process_vm_readv_writev.c procfs-cmdline-exe.c \
+	nocwd.c pending.c ppoll_alarm.c process_vm_readv_writev.c \
+	procfs-cmdline-exe.c pselect_alarm.c pselect_sigmask_null.c \
 	pth_atfork1.c pth_blockedsig.c pth_cancel1.c pth_cancel2.c \
 	pth_cvsimple.c pth_empty.c pth_exit.c pth_exit2.c \
 	pth_mutexspeed.c pth_once.c pth_rwlock.c pth_stackalign.c \
-	rcrl.c readline1.c require-text-symbol.c res_search.c resolv.c \
-	rlimit64_nofile.c rlimit_nofile.c selfrun.c sem.c semlimit.c \
-	sha1_test.c shortpush.c shorts.c sigstackgrowth.c \
-	stackgrowth.c syscall-restart1.c syscall-restart2.c syslog.c \
-	system.c thread-exits.c threaded-fork.c threadederrno.c \
-	timestamp.c $(tls_SOURCES) $(tls_so_SOURCES) \
-	$(tls2_so_SOURCES) unit_debuglog.c \
+	pth_term_signal.c rcrl.c readline1.c require-text-symbol.c \
+	res_search.c resolv.c rlimit64_nofile.c rlimit_nofile.c \
+	selfrun.c sem.c semlimit.c sha1_test.c shortpush.c shorts.c \
+	sigstackgrowth.c stackgrowth.c syscall-restart1.c \
+	syscall-restart2.c syslog.c system.c thread-exits.c \
+	threaded-fork.c threadederrno.c timestamp.c $(tls_SOURCES) \
+	$(tls_so_SOURCES) $(tls2_so_SOURCES) unit_debuglog.c \
 	$(valgrind_cpp_test_SOURCES) vgprintf.c
 DIST_SOURCES = ansi.c args.c async-sigs.c bitfield1.c bug129866.c \
 	bug234814.c closeall.c $(coolo_sigaction_SOURCES) \
@@ -556,17 +577,18 @@ DIST_SOURCES = ansi.c args.c async-sigs.c bitfield1.c bug129866.c \
 	$(gxx304_SOURCES) ifunc.c ioctl_moans.c libvex_test.c \
 	$(libvexmultiarch_test_SOURCES) manythreads.c map_unaligned.c \
 	map_unmap.c mmap_fcntl_bug.c mq.c munmap_exe.c nestedfns.c \
-	pending.c process_vm_readv_writev.c procfs-cmdline-exe.c \
+	nocwd.c pending.c ppoll_alarm.c process_vm_readv_writev.c \
+	procfs-cmdline-exe.c pselect_alarm.c pselect_sigmask_null.c \
 	pth_atfork1.c pth_blockedsig.c pth_cancel1.c pth_cancel2.c \
 	pth_cvsimple.c pth_empty.c pth_exit.c pth_exit2.c \
 	pth_mutexspeed.c pth_once.c pth_rwlock.c pth_stackalign.c \
-	rcrl.c readline1.c require-text-symbol.c res_search.c resolv.c \
-	rlimit64_nofile.c rlimit_nofile.c selfrun.c sem.c semlimit.c \
-	sha1_test.c shortpush.c shorts.c sigstackgrowth.c \
-	stackgrowth.c syscall-restart1.c syscall-restart2.c syslog.c \
-	system.c thread-exits.c threaded-fork.c threadederrno.c \
-	timestamp.c $(tls_SOURCES) $(tls_so_SOURCES) \
-	$(tls2_so_SOURCES) unit_debuglog.c \
+	pth_term_signal.c rcrl.c readline1.c require-text-symbol.c \
+	res_search.c resolv.c rlimit64_nofile.c rlimit_nofile.c \
+	selfrun.c sem.c semlimit.c sha1_test.c shortpush.c shorts.c \
+	sigstackgrowth.c stackgrowth.c syscall-restart1.c \
+	syscall-restart2.c syslog.c system.c thread-exits.c \
+	threaded-fork.c threadederrno.c timestamp.c $(tls_SOURCES) \
+	$(tls_so_SOURCES) $(tls2_so_SOURCES) unit_debuglog.c \
 	$(valgrind_cpp_test_SOURCES) vgprintf.c
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
@@ -714,6 +736,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -746,6 +769,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -906,14 +930,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -937,7 +961,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -1080,14 +1105,19 @@ EXTRA_DIST = \
 	mq.stderr.exp mq.vgtest \
 	munmap_exe.stderr.exp munmap_exe.vgtest \
 	nestedfns.stderr.exp nestedfns.stdout.exp nestedfns.vgtest \
+	nocwd.stdout.exp nocwd.stderr.exp nocwd.vgtest \
 	nodir.stderr.exp nodir.vgtest \
 	pending.stdout.exp pending.stderr.exp pending.vgtest \
+	ppoll_alarm.stdout.exp ppoll_alarm.stderr.exp ppoll_alarm.vgtest \
 	procfs-linux.stderr.exp-with-readlinkat \
 	procfs-linux.stderr.exp-without-readlinkat \
 	procfs-linux.vgtest \
 	procfs-non-linux.vgtest \
 	procfs-non-linux.stderr.exp-with-readlinkat \
 	procfs-non-linux.stderr.exp-without-readlinkat \
+	pselect_alarm.stdout.exp pselect_alarm.stderr.exp pselect_alarm.vgtest \
+	pselect_sigmask_null.vgtest \
+	pselect_sigmask_null.stdout.exp pselect_sigmask_null.stderr.exp \
 	pth_atfork1.stderr.exp pth_atfork1.stdout.exp pth_atfork1.vgtest \
 	pth_blockedsig.stderr.exp \
 	pth_blockedsig.stdout.exp pth_blockedsig.vgtest \
@@ -1103,6 +1133,7 @@ EXTRA_DIST = \
 	pth_rwlock.stderr.exp pth_rwlock.vgtest \
 	pth_stackalign.stderr.exp \
 	pth_stackalign.stdout.exp pth_stackalign.vgtest \
+	pth_term_signal.stderr.exp pth_term_signal.vgtest \
 	rcrl.stderr.exp rcrl.stdout.exp rcrl.vgtest \
 	readline1.stderr.exp readline1.stdout.exp \
 	readline1.vgtest \
@@ -1142,7 +1173,7 @@ EXTRA_DIST = \
 ansi_CFLAGS = $(AM_CFLAGS) -ansi
 execve_CFLAGS = $(AM_CFLAGS) @FLAG_W_NO_NONNULL@
 @VGCONF_OS_IS_SOLARIS_TRUE@fcntl_setown_LDADD = -lsocket -lnsl
-@VGCONF_OS_IS_SOLARIS_TRUE@fdleak_cmsg_CFLAGS = $(AM_CFLAGS) -D_XOPEN_SOURCE=500
+@VGCONF_OS_IS_SOLARIS_TRUE@fdleak_cmsg_CFLAGS = $(AM_CFLAGS) -std=c99 -D_XOPEN_SOURCE=600
 @VGCONF_OS_IS_SOLARIS_TRUE@fdleak_cmsg_LDADD = -lsocket -lnsl
 @VGCONF_OS_IS_SOLARIS_TRUE@fdleak_ipv4_LDADD = -lsocket -lnsl
 @VGCONF_OS_IS_SOLARIS_TRUE@fdleak_creat_LDADD = -lsocket -lnsl
@@ -1162,6 +1193,8 @@ libvexmultiarch_test_LDADD = \
 	../../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a @LIB_UBSAN@
 
 libvexmultiarch_test_SOURCES = libvex_test.c
+ppoll_alarm_LDADD = -lpthread
+pselect_alarm_LDADD = -lpthread
 pth_atfork1_LDADD = -lpthread
 pth_blockedsig_LDADD = -lpthread
 pth_cancel1_CFLAGS = $(AM_CFLAGS) -Wno-shadow
@@ -1176,6 +1209,7 @@ pth_once_LDADD = -lpthread
 pth_rwlock_LDADD = -lpthread
 pth_rwlock_CFLAGS = $(AM_CFLAGS) $(am__append_31)
 pth_stackalign_LDADD = -lpthread
+pth_term_signal_LDADD = -lpthread
 res_search_LDADD = -lresolv -lpthread
 resolv_CFLAGS = $(AM_CFLAGS) $(am__append_32)
 resolv_LDADD = -lresolv -lpthread
@@ -1395,9 +1429,17 @@ nestedfns$(EXEEXT): $(nestedfns_OBJECTS) $(nestedfns_DEPENDENCIES) $(EXTRA_neste
 	@rm -f nestedfns$(EXEEXT)
 	$(AM_V_CCLD)$(nestedfns_LINK) $(nestedfns_OBJECTS) $(nestedfns_LDADD) $(LIBS)
 
+nocwd$(EXEEXT): $(nocwd_OBJECTS) $(nocwd_DEPENDENCIES) $(EXTRA_nocwd_DEPENDENCIES) 
+	@rm -f nocwd$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(nocwd_OBJECTS) $(nocwd_LDADD) $(LIBS)
+
 pending$(EXEEXT): $(pending_OBJECTS) $(pending_DEPENDENCIES) $(EXTRA_pending_DEPENDENCIES) 
 	@rm -f pending$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(pending_OBJECTS) $(pending_LDADD) $(LIBS)
+
+ppoll_alarm$(EXEEXT): $(ppoll_alarm_OBJECTS) $(ppoll_alarm_DEPENDENCIES) $(EXTRA_ppoll_alarm_DEPENDENCIES) 
+	@rm -f ppoll_alarm$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(ppoll_alarm_OBJECTS) $(ppoll_alarm_LDADD) $(LIBS)
 
 process_vm_readv_writev$(EXEEXT): $(process_vm_readv_writev_OBJECTS) $(process_vm_readv_writev_DEPENDENCIES) $(EXTRA_process_vm_readv_writev_DEPENDENCIES) 
 	@rm -f process_vm_readv_writev$(EXEEXT)
@@ -1406,6 +1448,14 @@ process_vm_readv_writev$(EXEEXT): $(process_vm_readv_writev_OBJECTS) $(process_v
 procfs-cmdline-exe$(EXEEXT): $(procfs_cmdline_exe_OBJECTS) $(procfs_cmdline_exe_DEPENDENCIES) $(EXTRA_procfs_cmdline_exe_DEPENDENCIES) 
 	@rm -f procfs-cmdline-exe$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(procfs_cmdline_exe_OBJECTS) $(procfs_cmdline_exe_LDADD) $(LIBS)
+
+pselect_alarm$(EXEEXT): $(pselect_alarm_OBJECTS) $(pselect_alarm_DEPENDENCIES) $(EXTRA_pselect_alarm_DEPENDENCIES) 
+	@rm -f pselect_alarm$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(pselect_alarm_OBJECTS) $(pselect_alarm_LDADD) $(LIBS)
+
+pselect_sigmask_null$(EXEEXT): $(pselect_sigmask_null_OBJECTS) $(pselect_sigmask_null_DEPENDENCIES) $(EXTRA_pselect_sigmask_null_DEPENDENCIES) 
+	@rm -f pselect_sigmask_null$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(pselect_sigmask_null_OBJECTS) $(pselect_sigmask_null_LDADD) $(LIBS)
 
 pth_atfork1$(EXEEXT): $(pth_atfork1_OBJECTS) $(pth_atfork1_DEPENDENCIES) $(EXTRA_pth_atfork1_DEPENDENCIES) 
 	@rm -f pth_atfork1$(EXEEXT)
@@ -1454,6 +1504,10 @@ pth_rwlock$(EXEEXT): $(pth_rwlock_OBJECTS) $(pth_rwlock_DEPENDENCIES) $(EXTRA_pt
 pth_stackalign$(EXEEXT): $(pth_stackalign_OBJECTS) $(pth_stackalign_DEPENDENCIES) $(EXTRA_pth_stackalign_DEPENDENCIES) 
 	@rm -f pth_stackalign$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(pth_stackalign_OBJECTS) $(pth_stackalign_LDADD) $(LIBS)
+
+pth_term_signal$(EXEEXT): $(pth_term_signal_OBJECTS) $(pth_term_signal_DEPENDENCIES) $(EXTRA_pth_term_signal_DEPENDENCIES) 
+	@rm -f pth_term_signal$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(pth_term_signal_OBJECTS) $(pth_term_signal_LDADD) $(LIBS)
 
 rcrl$(EXEEXT): $(rcrl_OBJECTS) $(rcrl_DEPENDENCIES) $(EXTRA_rcrl_DEPENDENCIES) 
 	@rm -f rcrl$(EXEEXT)
@@ -1615,9 +1669,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mq.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/munmap_exe.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nestedfns-nestedfns.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nocwd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pending.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ppoll_alarm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/process_vm_readv_writev.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/procfs-cmdline-exe.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pselect_alarm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pselect_sigmask_null.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_atfork1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_blockedsig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_cancel1-pth_cancel1.Po@am__quote@
@@ -1630,6 +1688,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_once.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_rwlock-pth_rwlock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_stackalign.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pth_term_signal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcrl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/readline1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/require-text-symbol.Po@am__quote@

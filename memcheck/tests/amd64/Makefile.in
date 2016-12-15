@@ -111,7 +111,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -127,7 +128,10 @@ check_PROGRAMS = bt_everything$(EXEEXT) bug132146$(EXEEXT) \
 @BUILD_AVX_TESTS_TRUE@am__append_8 = sh-mem-vec256 xsave-avx
 @HAVE_ASM_CONSTRAINT_P_TRUE@am__append_9 = insn-pcmpistri
 # clang 3.5.0 barfs about -mfancy-math-387
-@COMPILER_IS_CLANG_FALSE@am__append_10 = more_x87_fp
+@COMPILER_IS_CLANG_FALSE@am__append_10 = \
+@COMPILER_IS_CLANG_FALSE@ 	more_x87_fp \
+@COMPILER_IS_CLANG_FALSE@ 	shr_edx
+
 @VGCONF_OS_IS_SOLARIS_TRUE@am__append_11 = --std=c99
 subdir = memcheck/tests/amd64
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -143,7 +147,8 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_AVX_TESTS_TRUE@am__EXEEXT_1 = sh-mem-vec256$(EXEEXT) \
 @BUILD_AVX_TESTS_TRUE@	xsave-avx$(EXEEXT)
 @HAVE_ASM_CONSTRAINT_P_TRUE@am__EXEEXT_2 = insn-pcmpistri$(EXEEXT)
-@COMPILER_IS_CLANG_FALSE@am__EXEEXT_3 = more_x87_fp$(EXEEXT)
+@COMPILER_IS_CLANG_FALSE@am__EXEEXT_3 = more_x87_fp$(EXEEXT) \
+@COMPILER_IS_CLANG_FALSE@	shr_edx$(EXEEXT)
 bt_everything_SOURCES = bt_everything.c
 bt_everything_OBJECTS = bt_everything.$(OBJEXT)
 bt_everything_LDADD = $(LDADD)
@@ -178,6 +183,9 @@ sh_mem_vec128_LDADD = $(LDADD)
 sh_mem_vec256_SOURCES = sh-mem-vec256.c
 sh_mem_vec256_OBJECTS = sh-mem-vec256.$(OBJEXT)
 sh_mem_vec256_LDADD = $(LDADD)
+shr_edx_SOURCES = shr_edx.c
+shr_edx_OBJECTS = shr_edx.$(OBJEXT)
+shr_edx_LDADD = $(LDADD)
 sse_memory_SOURCES = sse_memory.c
 sse_memory_OBJECTS = sse_memory.$(OBJEXT)
 sse_memory_LDADD = $(LDADD)
@@ -222,12 +230,12 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = bt_everything.c bug132146.c bug279698.c fxsave-amd64.c \
 	insn-bsfl.c insn-pcmpistri.c insn-pmovmskb.c more_x87_fp.c \
-	sh-mem-vec128.c sh-mem-vec256.c sse_memory.c xor-undef-amd64.c \
-	xsave-avx.c
+	sh-mem-vec128.c sh-mem-vec256.c shr_edx.c sse_memory.c \
+	xor-undef-amd64.c xsave-avx.c
 DIST_SOURCES = bt_everything.c bug132146.c bug279698.c fxsave-amd64.c \
 	insn-bsfl.c insn-pcmpistri.c insn-pmovmskb.c more_x87_fp.c \
-	sh-mem-vec128.c sh-mem-vec256.c sse_memory.c xor-undef-amd64.c \
-	xsave-avx.c
+	sh-mem-vec128.c sh-mem-vec256.c shr_edx.c sse_memory.c \
+	xor-undef-amd64.c xsave-avx.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -332,6 +340,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -364,6 +373,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -524,14 +534,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -555,7 +565,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -645,6 +656,7 @@ EXTRA_DIST = \
 	sh-mem-vec256-plo-yes.vgtest \
 		sh-mem-vec256-plo-yes.stderr.exp \
 		sh-mem-vec256-plo-yes.stdout.exp \
+	shr_edx.stderr.exp shr_edx.stdout.exp shr_edx.vgtest \
 	sse_memory.stderr.exp sse_memory.stdout.exp sse_memory.vgtest \
 	xor-undef-amd64.stderr.exp xor-undef-amd64.stdout.exp \
 	xor-undef-amd64.vgtest \
@@ -733,6 +745,10 @@ sh-mem-vec256$(EXEEXT): $(sh_mem_vec256_OBJECTS) $(sh_mem_vec256_DEPENDENCIES) $
 	@rm -f sh-mem-vec256$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(sh_mem_vec256_OBJECTS) $(sh_mem_vec256_LDADD) $(LIBS)
 
+shr_edx$(EXEEXT): $(shr_edx_OBJECTS) $(shr_edx_DEPENDENCIES) $(EXTRA_shr_edx_DEPENDENCIES) 
+	@rm -f shr_edx$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(shr_edx_OBJECTS) $(shr_edx_LDADD) $(LIBS)
+
 sse_memory$(EXEEXT): $(sse_memory_OBJECTS) $(sse_memory_DEPENDENCIES) $(EXTRA_sse_memory_DEPENDENCIES) 
 	@rm -f sse_memory$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(sse_memory_OBJECTS) $(sse_memory_LDADD) $(LIBS)
@@ -761,6 +777,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/more_x87_fp-more_x87_fp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sh-mem-vec128.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sh-mem-vec256.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shr_edx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sse_memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xor-undef-amd64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xsave-avx.Po@am__quote@

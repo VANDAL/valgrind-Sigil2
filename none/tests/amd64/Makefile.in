@@ -111,7 +111,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -132,24 +133,26 @@ check_PROGRAMS = allexec$(EXEEXT) amd64locked$(EXEEXT) \
 	$(am__EXEEXT_6) $(am__EXEEXT_7) $(am__EXEEXT_8) \
 	$(am__EXEEXT_9) $(am__EXEEXT_10) $(am__EXEEXT_11) \
 	$(am__EXEEXT_12) $(am__EXEEXT_13) $(am__EXEEXT_14) \
-	$(am__EXEEXT_15) $(am__EXEEXT_16) $(am__EXEEXT_17)
+	$(am__EXEEXT_15) $(am__EXEEXT_16) $(am__EXEEXT_17) \
+	$(am__EXEEXT_18)
 @BUILD_ADDR32_TESTS_TRUE@am__append_11 = asorep
 @BUILD_AVX_TESTS_TRUE@@BUILD_VPCLMULQDQ_TESTS_TRUE@am__append_12 = avx-1
-@BUILD_AVX2_TESTS_TRUE@@COMPILER_IS_ICC_FALSE@am__append_13 = avx2-1
-@BUILD_SSSE3_TESTS_TRUE@am__append_14 = ssse3_misaligned
-@BUILD_LZCNT_TESTS_TRUE@am__append_15 = lzcnt64
-@BUILD_MOVBE_TESTS_TRUE@am__append_16 = movbe
-@BUILD_SSE42_TESTS_TRUE@am__append_17 = \
+@BUILD_AVX_TESTS_TRUE@@BUILD_FMA4_TESTS_TRUE@am__append_13 = fma4
+@BUILD_AVX2_TESTS_TRUE@@COMPILER_IS_ICC_FALSE@am__append_14 = avx2-1
+@BUILD_SSSE3_TESTS_TRUE@am__append_15 = ssse3_misaligned
+@BUILD_LZCNT_TESTS_TRUE@am__append_16 = lzcnt64
+@BUILD_MOVBE_TESTS_TRUE@am__append_17 = movbe
+@BUILD_SSE42_TESTS_TRUE@am__append_18 = \
 @BUILD_SSE42_TESTS_TRUE@	pcmpstr64 pcmpxstrx64 sse4-64 crc32 aes \
 @BUILD_SSE42_TESTS_TRUE@	pcmpstr64w pcmpxstrx64w
 
-@BUILD_TSX_TESTS_TRUE@am__append_18 = tm1 xacq_xrel
-@BUILD_BMI_TESTS_TRUE@am__append_19 = bmi
-@BUILD_FMA_TESTS_TRUE@am__append_20 = fma
-@BUILD_MPX_TESTS_TRUE@am__append_21 = mpx
+@BUILD_TSX_TESTS_TRUE@am__append_19 = tm1 xacq_xrel
+@BUILD_BMI_TESTS_TRUE@am__append_20 = bmi
+@BUILD_FMA_TESTS_TRUE@am__append_21 = fma
+@BUILD_MPX_TESTS_TRUE@am__append_22 = mpx
 
 # DDD: these need to be made to work on Darwin like the x86/ ones were.
-@VGCONF_OS_IS_DARWIN_FALSE@am__append_22 = \
+@VGCONF_OS_IS_DARWIN_FALSE@am__append_23 = \
 @VGCONF_OS_IS_DARWIN_FALSE@	bug156404-amd64 \
 @VGCONF_OS_IS_DARWIN_FALSE@	faultstatus \
 @VGCONF_OS_IS_DARWIN_FALSE@	fcmovnu \
@@ -159,7 +162,8 @@ check_PROGRAMS = allexec$(EXEEXT) amd64locked$(EXEEXT) \
 @VGCONF_OS_IS_DARWIN_FALSE@	shrld \
 @VGCONF_OS_IS_DARWIN_FALSE@	slahf-amd64
 
-@BUILD_LOOPNEL_TESTS_TRUE@@VGCONF_OS_IS_DARWIN_FALSE@am__append_23 = loopnel
+@BUILD_LOOPNEL_TESTS_TRUE@@VGCONF_OS_IS_DARWIN_FALSE@am__append_24 = loopnel
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_25 = -D__EXTENSIONS__
 subdir = none/tests/amd64
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -179,26 +183,28 @@ am__EXEEXT_4 = insn_basic$(EXEEXT) insn_mmx$(EXEEXT) insn_sse$(EXEEXT) \
 	$(am__EXEEXT_2) $(am__EXEEXT_3)
 @BUILD_ADDR32_TESTS_TRUE@am__EXEEXT_5 = asorep$(EXEEXT)
 @BUILD_AVX_TESTS_TRUE@@BUILD_VPCLMULQDQ_TESTS_TRUE@am__EXEEXT_6 = avx-1$(EXEEXT)
-@BUILD_AVX2_TESTS_TRUE@@COMPILER_IS_ICC_FALSE@am__EXEEXT_7 =  \
+@BUILD_AVX_TESTS_TRUE@@BUILD_FMA4_TESTS_TRUE@am__EXEEXT_7 =  \
+@BUILD_AVX_TESTS_TRUE@@BUILD_FMA4_TESTS_TRUE@	fma4$(EXEEXT)
+@BUILD_AVX2_TESTS_TRUE@@COMPILER_IS_ICC_FALSE@am__EXEEXT_8 =  \
 @BUILD_AVX2_TESTS_TRUE@@COMPILER_IS_ICC_FALSE@	avx2-1$(EXEEXT)
-@BUILD_SSSE3_TESTS_TRUE@am__EXEEXT_8 = ssse3_misaligned$(EXEEXT)
-@BUILD_LZCNT_TESTS_TRUE@am__EXEEXT_9 = lzcnt64$(EXEEXT)
-@BUILD_MOVBE_TESTS_TRUE@am__EXEEXT_10 = movbe$(EXEEXT)
-@BUILD_SSE42_TESTS_TRUE@am__EXEEXT_11 = pcmpstr64$(EXEEXT) \
+@BUILD_SSSE3_TESTS_TRUE@am__EXEEXT_9 = ssse3_misaligned$(EXEEXT)
+@BUILD_LZCNT_TESTS_TRUE@am__EXEEXT_10 = lzcnt64$(EXEEXT)
+@BUILD_MOVBE_TESTS_TRUE@am__EXEEXT_11 = movbe$(EXEEXT)
+@BUILD_SSE42_TESTS_TRUE@am__EXEEXT_12 = pcmpstr64$(EXEEXT) \
 @BUILD_SSE42_TESTS_TRUE@	pcmpxstrx64$(EXEEXT) sse4-64$(EXEEXT) \
 @BUILD_SSE42_TESTS_TRUE@	crc32$(EXEEXT) aes$(EXEEXT) \
 @BUILD_SSE42_TESTS_TRUE@	pcmpstr64w$(EXEEXT) \
 @BUILD_SSE42_TESTS_TRUE@	pcmpxstrx64w$(EXEEXT)
-@BUILD_TSX_TESTS_TRUE@am__EXEEXT_12 = tm1$(EXEEXT) xacq_xrel$(EXEEXT)
-@BUILD_BMI_TESTS_TRUE@am__EXEEXT_13 = bmi$(EXEEXT)
-@BUILD_FMA_TESTS_TRUE@am__EXEEXT_14 = fma$(EXEEXT)
-@BUILD_MPX_TESTS_TRUE@am__EXEEXT_15 = mpx$(EXEEXT)
-@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_16 = bug156404-amd64$(EXEEXT) \
+@BUILD_TSX_TESTS_TRUE@am__EXEEXT_13 = tm1$(EXEEXT) xacq_xrel$(EXEEXT)
+@BUILD_BMI_TESTS_TRUE@am__EXEEXT_14 = bmi$(EXEEXT)
+@BUILD_FMA_TESTS_TRUE@am__EXEEXT_15 = fma$(EXEEXT)
+@BUILD_MPX_TESTS_TRUE@am__EXEEXT_16 = mpx$(EXEEXT)
+@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_17 = bug156404-amd64$(EXEEXT) \
 @VGCONF_OS_IS_DARWIN_FALSE@	faultstatus$(EXEEXT) \
 @VGCONF_OS_IS_DARWIN_FALSE@	fcmovnu$(EXEEXT) fxtract$(EXEEXT) \
 @VGCONF_OS_IS_DARWIN_FALSE@	looper$(EXEEXT) jrcxz$(EXEEXT) \
 @VGCONF_OS_IS_DARWIN_FALSE@	shrld$(EXEEXT) slahf-amd64$(EXEEXT)
-@BUILD_LOOPNEL_TESTS_TRUE@@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_17 = loopnel$(EXEEXT)
+@BUILD_LOOPNEL_TESTS_TRUE@@VGCONF_OS_IS_DARWIN_FALSE@am__EXEEXT_18 = loopnel$(EXEEXT)
 aes_SOURCES = aes.c
 aes_OBJECTS = aes.$(OBJEXT)
 aes_LDADD = $(LDADD)
@@ -257,6 +263,11 @@ fcmovnu_LDADD = $(LDADD)
 fma_SOURCES = fma.c
 fma_OBJECTS = fma.$(OBJEXT)
 fma_LDADD = $(LDADD)
+fma4_SOURCES = fma4.c
+fma4_OBJECTS = fma4-fma4.$(OBJEXT)
+fma4_DEPENDENCIES =
+fma4_LINK = $(CCLD) $(fma4_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
 fxtract_SOURCES = fxtract.c
 fxtract_OBJECTS = fxtract-fxtract.$(OBJEXT)
 fxtract_DEPENDENCIES =
@@ -397,7 +408,7 @@ am__v_CCLD_1 =
 SOURCES = aes.c allexec.c amd64locked.c asorep.c avx-1.c avx2-1.c \
 	bmi.c bug127521-64.c bug132813-amd64.c bug132918.c \
 	bug137714-amd64.c bug156404-amd64.c clc.c cmpxchg.c crc32.c \
-	faultstatus.c fcmovnu.c fma.c fxtract.c getseg.c \
+	faultstatus.c fcmovnu.c fma.c fma4.c fxtract.c getseg.c \
 	$(insn_basic_SOURCES) $(insn_fpu_SOURCES) $(insn_mmx_SOURCES) \
 	$(insn_pclmulqdq_SOURCES) $(insn_sse_SOURCES) \
 	$(insn_sse2_SOURCES) $(insn_sse3_SOURCES) \
@@ -410,7 +421,7 @@ SOURCES = aes.c allexec.c amd64locked.c asorep.c avx-1.c avx2-1.c \
 DIST_SOURCES = aes.c allexec.c amd64locked.c asorep.c avx-1.c avx2-1.c \
 	bmi.c bug127521-64.c bug132813-amd64.c bug132918.c \
 	bug137714-amd64.c bug156404-amd64.c clc.c cmpxchg.c crc32.c \
-	faultstatus.c fcmovnu.c fma.c fxtract.c getseg.c \
+	faultstatus.c fcmovnu.c fma.c fma4.c fxtract.c getseg.c \
 	$(insn_basic_SOURCES) $(insn_fpu_SOURCES) $(insn_mmx_SOURCES) \
 	$(insn_pclmulqdq_SOURCES) $(insn_sse_SOURCES) \
 	$(insn_sse2_SOURCES) $(insn_sse3_SOURCES) \
@@ -524,6 +535,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -556,6 +568,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -716,14 +729,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -747,7 +760,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -840,6 +854,7 @@ EXTRA_DIST = \
 	cmpxchg.vgtest cmpxchg.stdout.exp cmpxchg.stderr.exp \
 	faultstatus.disabled faultstatus.stderr.exp \
 	fcmovnu.vgtest fcmovnu.stderr.exp fcmovnu.stdout.exp \
+	fma4.vgtest fma4.stdout.exp fma4.stderr.exp \
 	fxtract.vgtest fxtract.stderr.exp fxtract.stdout.exp \
 	fxtract.stdout.exp-older-glibc \
 	getseg.stdout.exp getseg.stderr.exp getseg.vgtest \
@@ -906,6 +921,8 @@ insn_fpu_SOURCES = insn_fpu.def
 insn_fpu_LDADD = -lm
 insn_pclmulqdq_SOURCES = insn_pclmulqdq.def
 fxtract_LDADD = -lm
+fma4_CFLAGS = $(AM_CFLAGS) -std=c99 $(am__append_25)
+fma4_LDADD = -lm
 all: all-am
 
 .SUFFIXES:
@@ -1015,6 +1032,10 @@ fcmovnu$(EXEEXT): $(fcmovnu_OBJECTS) $(fcmovnu_DEPENDENCIES) $(EXTRA_fcmovnu_DEP
 fma$(EXEEXT): $(fma_OBJECTS) $(fma_DEPENDENCIES) $(EXTRA_fma_DEPENDENCIES) 
 	@rm -f fma$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(fma_OBJECTS) $(fma_LDADD) $(LIBS)
+
+fma4$(EXEEXT): $(fma4_OBJECTS) $(fma4_DEPENDENCIES) $(EXTRA_fma4_DEPENDENCIES) 
+	@rm -f fma4$(EXEEXT)
+	$(AM_V_CCLD)$(fma4_LINK) $(fma4_OBJECTS) $(fma4_LDADD) $(LIBS)
 
 fxtract$(EXEEXT): $(fxtract_OBJECTS) $(fxtract_DEPENDENCIES) $(EXTRA_fxtract_DEPENDENCIES) 
 	@rm -f fxtract$(EXEEXT)
@@ -1176,6 +1197,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/faultstatus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fcmovnu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fma.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fma4-fma4.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fxtract-fxtract.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getseg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insn_basic.Po@am__quote@
@@ -1254,6 +1276,20 @@ amd64locked-amd64locked.obj: amd64locked.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='amd64locked.c' object='amd64locked-amd64locked.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(amd64locked_CFLAGS) $(CFLAGS) -c -o amd64locked-amd64locked.obj `if test -f 'amd64locked.c'; then $(CYGPATH_W) 'amd64locked.c'; else $(CYGPATH_W) '$(srcdir)/amd64locked.c'; fi`
+
+fma4-fma4.o: fma4.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fma4_CFLAGS) $(CFLAGS) -MT fma4-fma4.o -MD -MP -MF $(DEPDIR)/fma4-fma4.Tpo -c -o fma4-fma4.o `test -f 'fma4.c' || echo '$(srcdir)/'`fma4.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fma4-fma4.Tpo $(DEPDIR)/fma4-fma4.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fma4.c' object='fma4-fma4.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fma4_CFLAGS) $(CFLAGS) -c -o fma4-fma4.o `test -f 'fma4.c' || echo '$(srcdir)/'`fma4.c
+
+fma4-fma4.obj: fma4.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fma4_CFLAGS) $(CFLAGS) -MT fma4-fma4.obj -MD -MP -MF $(DEPDIR)/fma4-fma4.Tpo -c -o fma4-fma4.obj `if test -f 'fma4.c'; then $(CYGPATH_W) 'fma4.c'; else $(CYGPATH_W) '$(srcdir)/fma4.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fma4-fma4.Tpo $(DEPDIR)/fma4-fma4.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fma4.c' object='fma4-fma4.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fma4_CFLAGS) $(CFLAGS) -c -o fma4-fma4.obj `if test -f 'fma4.c'; then $(CYGPATH_W) 'fma4.c'; else $(CYGPATH_W) '$(srcdir)/fma4.c'; fi`
 
 fxtract-fxtract.o: fxtract.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fxtract_CFLAGS) $(CFLAGS) -MT fxtract-fxtract.o -MD -MP -MF $(DEPDIR)/fxtract-fxtract.Tpo -c -o fxtract-fxtract.o `test -f 'fxtract.c' || echo '$(srcdir)/'`fxtract.c

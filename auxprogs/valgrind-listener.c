@@ -4,15 +4,6 @@
 /*---                                          valgrind-listener.c ---*/
 /*--------------------------------------------------------------------*/
 
-/* 
- * This file has been modified for Sigil 2.0 aka PRISM. A tool for
- * capturing communication and synchronization events in a workload.
- *
- * Mike Lui
- *   mike.lui@drexel.edu
- *
- */
-
 /*
    This file is part of Valgrind, a dynamic binary instrumentation
    framework.

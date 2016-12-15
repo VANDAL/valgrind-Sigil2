@@ -36,6 +36,7 @@
 #include "pub_core_clientstate.h"
 #include "pub_core_aspacemgr.h"
 #include "pub_core_aspacehl.h"
+#include "pub_core_clreq.h"
 #include "pub_core_commandline.h"
 #include "pub_core_debuglog.h"
 #include "pub_core_errormgr.h"
@@ -176,6 +177,8 @@ static void usage_NORETURN ( Bool debug_help )
 "    --vgdb-shadow-registers=no|yes   let gdb see the shadow registers [no]\n"
 "    --vgdb-prefix=<prefix>    prefix for vgdb FIFOs [%s]\n"
 "    --run-libc-freeres=no|yes free up glibc memory at exit on Linux? [yes]\n"
+"    --run-cxx-freeres=no|yes  free up libstdc++ memory at exit on Linux\n"
+"                              and Solaris? [yes]\n"
 "    --sim-hints=hint1,hint2,...  activate unusual sim behaviours [none] \n"
 "         where hint is one of:\n"
 "           lax-ioctls lax-doors fuse-compatible enable-outer\n"
@@ -644,6 +647,7 @@ void main_process_cmd_line_options ( /*OUT*/Bool* logging_to_fd,
       else if VG_BOOL_CLO(arg, "--show-emwarns",   VG_(clo_show_emwarns)) {}
 
       else if VG_BOOL_CLO(arg, "--run-libc-freeres", VG_(clo_run_libc_freeres)) {}
+      else if VG_BOOL_CLO(arg, "--run-cxx-freeres",  VG_(clo_run_cxx_freeres)) {}
       else if VG_BOOL_CLO(arg, "--show-below-main",  VG_(clo_show_below_main)) {}
       else if VG_BOOL_CLO(arg, "--time-stamp",       VG_(clo_time_stamp)) {}
       else if VG_BOOL_CLO(arg, "--track-fds",        VG_(clo_track_fds)) {}
@@ -1315,7 +1319,7 @@ static void print_preamble ( Bool logging_to_fd,
       VG_(printf_xml)("\n");
    }
 
-   if (VG_(clo_xml) || VG_(clo_verbosity > 0)) {
+   if (VG_(clo_xml) || VG_(clo_verbosity) > 0) {
 
       if (VG_(clo_xml))
          VG_(printf_xml)("<preamble>\n");
@@ -1509,8 +1513,8 @@ static void print_preamble ( Bool logging_to_fd,
 /*====================================================================*/
 
 /* Number of file descriptors that Valgrind tries to reserve for
-   it's own use - just a small constant. */
-#define N_RESERVED_FDS (10)
+   its own use - just a small constant. */
+#define N_RESERVED_FDS (12)
 
 static void setup_file_descriptors(void)
 {
@@ -1627,7 +1631,6 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    Bool    logging_to_fd      = False;
    const HChar* xml_fname_unexpanded = NULL;
    Int     loglevel, i;
-   struct vki_rlimit zero = { 0, 0 };
    XArray* addr2dihandle = NULL;
 
    //============================================================
@@ -1744,10 +1747,12 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    //   p: logging, plausible-stack
    //--------------------------------------------------------------
    VG_(debugLog)(1, "main", "Starting the address space manager\n");
-   vg_assert(VKI_PAGE_SIZE     == 4096 || VKI_PAGE_SIZE     == 65536
-             || VKI_PAGE_SIZE     == 16384);
-   vg_assert(VKI_MAX_PAGE_SIZE == 4096 || VKI_MAX_PAGE_SIZE == 65536
-             || VKI_MAX_PAGE_SIZE == 16384);
+   vg_assert(VKI_PAGE_SIZE    == 4096  || VKI_PAGE_SIZE == 8192
+             || VKI_PAGE_SIZE == 16384 || VKI_PAGE_SIZE == 32768
+             || VKI_PAGE_SIZE == 65536);
+   vg_assert(VKI_MAX_PAGE_SIZE    == 4096  || VKI_MAX_PAGE_SIZE == 8192
+             || VKI_MAX_PAGE_SIZE == 16384 || VKI_MAX_PAGE_SIZE == 32768
+             || VKI_MAX_PAGE_SIZE == 65536);
    vg_assert(VKI_PAGE_SIZE <= VKI_MAX_PAGE_SIZE);
    vg_assert(VKI_PAGE_SIZE     == (1 << VKI_PAGE_SHIFT));
    vg_assert(VKI_MAX_PAGE_SIZE == (1 << VKI_MAX_PAGE_SHIFT));
@@ -1800,13 +1805,15 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    VG_(debugLog)(1, "main", "... %s\n", VG_(name_of_launcher));
 
    //--------------------------------------------------------------
-   // Get the current process datasize rlimit, and set it to zero.
-   // This prevents any internal uses of brk() from having any effect.
-   // We remember the old value so we can restore it on exec, so that
-   // child processes will have a reasonable brk value.
+   // We used to set the process datasize rlimit to zero to prevent
+   // any internal use of brk() from having any effect. But later
+   // linux kernels redefine RLIMIT_DATA as the size of any data
+   // areas, including some dynamic mmap memory allocations.
+   // See bug #357833 for the commit that went into linux 4.5
+   // changing the definition of RLIMIT_DATA. So don't mess with
+   // RLIMIT_DATA here now anymore. Just remember it for use in
+   // the syscall wrappers.
    VG_(getrlimit)(VKI_RLIMIT_DATA, &VG_(client_rlimit_data));
-   zero.rlim_max = VG_(client_rlimit_data).rlim_max;
-   VG_(setrlimit)(VKI_RLIMIT_DATA, &zero);
 
    // Get the current process stack rlimit.
    VG_(getrlimit)(VKI_RLIMIT_STACK, &VG_(client_rlimit_stack));
@@ -1846,12 +1853,9 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    // Record the working directory at startup
    //   p: none
    VG_(debugLog)(1, "main", "Getting the working directory at startup\n");
-   { Bool ok = VG_(record_startup_wd)();
-     if (!ok) 
-        VG_(err_config_error)( "Can't establish current working "
-                               "directory at startup\n");
-   }
-   VG_(debugLog)(1, "main", "... %s\n", VG_(get_startup_wd)() );
+   VG_(record_startup_wd)();
+   const HChar *wd = VG_(get_startup_wd)();
+   VG_(debugLog)(1, "main", "... %s\n", wd != NULL ? wd : "<NO CWD>" );
 
    //============================================================
    // Command line argument handling order:
@@ -2162,36 +2166,10 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    /* Hook to delay things long enough so we can get the pid and
       attach GDB in another shell. */
    if (VG_(clo_wait_for_gdb)) {
-      ULong iters, q;
-      VG_(debugLog)(1, "main", "Wait for GDB\n");
-      VG_(printf)("pid=%d, entering delay loop\n", VG_(getpid)());
-
-#     if defined(VGP_x86_linux)
-      iters = 10;
-#     elif defined(VGP_amd64_linux) || defined(VGP_ppc64be_linux) \
-         || defined(VGP_ppc64le_linux) || defined(VGP_tilegx_linux)
-      iters = 10;
-#     elif defined(VGP_ppc32_linux)
-      iters = 5;
-#     elif defined(VGP_arm_linux)
-      iters = 5;
-#     elif defined(VGP_arm64_linux)
-      iters = 5;
-#     elif defined(VGP_s390x_linux)
-      iters = 10;
-#     elif defined(VGP_mips32_linux) || defined(VGP_mips64_linux)
-      iters = 10;
-#     elif defined(VGO_darwin)
-      iters = 3;
-#     elif defined(VGO_solaris)
-      iters = 10;
-#     else
-#       error "Unknown plat"
-#     endif
-
-      iters *= 1000ULL * 1000 * 1000;
-      for (q = 0; q < iters; q++) 
-         __asm__ __volatile__("" ::: "memory","cc");
+      const int ms = 8000; // milliseconds
+      VG_(debugLog)(1, "main", "Wait for GDB during %d ms\n", ms);
+      VG_(printf)("pid=%d, entering delay %d ms loop\n", VG_(getpid)(), ms);
+      VG_(poll)(NULL, 0, ms);
    }
 
    //--------------------------------------------------------------
@@ -2557,8 +2535,8 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    So don't. 
 
    The final_tidyup call makes a bit of a nonsense of the ExitProcess
-   case, since it will run the libc_freeres function, thus allowing
-   other lurking threads to run again.  Hmm. */
+   case, since it will run __gnu_cxx::__freeres and libc_freeres functions,
+   thus allowing other lurking threads to run again.  Hmm. */
 
 static 
 void shutdown_actions_NORETURN( ThreadId tid, 
@@ -2581,8 +2559,8 @@ void shutdown_actions_NORETURN( ThreadId tid,
       // jrs: Huh?  but they surely are already gone
       VG_(reap_threads)(tid);
 
-      // Clean the client up before the final report
-      // this causes the libc_freeres function to run
+      // Clean the client up before the final report.
+      // This causes __gnu_cxx::__freeres and libc_freeres functions to run.
       final_tidyup(tid);
 
       /* be paranoid */
@@ -2597,9 +2575,9 @@ void shutdown_actions_NORETURN( ThreadId tid,
       // that none of the other threads ever run again.
       vg_assert( VG_(count_living_threads)() >= 1 );
 
-      // Clean the client up before the final report
-      // this causes the libc_freeres function to run
-      // perhaps this is unsafe, as per comment above
+      // Clean the client up before the final report.
+      // This causes __gnu_cxx::__freeres and libc_freeres functions to run.
+      // Perhaps this is unsafe, as per comment above.
       final_tidyup(tid);
 
       /* be paranoid */
@@ -2698,7 +2676,11 @@ void shutdown_actions_NORETURN( ThreadId tid,
       sys_exit, do likewise; if the (last) thread stopped due to a fatal
       signal, terminate the entire system with that same fatal signal. */
    VG_(debugLog)(1, "core_os", 
-                    "VG_(terminate_NORETURN)(tid=%u)\n", tid);
+                 "VG_(terminate_NORETURN)(tid=%u) schedretcode %s"
+                 " os_state.exit_code %ld fatalsig %d\n",
+                 tid, VG_(name_of_VgSchedReturnCode)(tids_schedretcode),
+                 VG_(threads)[tid].os_state.exitcode, 
+                 VG_(threads)[tid].os_state.fatalsig);
 
    switch (tids_schedretcode) {
    case VgSrc_ExitThread:  /* the normal way out (Linux, Solaris) */
@@ -2739,63 +2721,141 @@ void shutdown_actions_NORETURN( ThreadId tid,
 /* -------------------- */
 
 /* Final clean-up before terminating the process.  
-   Clean up the client by calling __libc_freeres() (if requested) 
-   This is Linux-specific?
-   GrP fixme glibc-specific, anyway
+   Clean up the client by calling __gnu_cxx::__freeres() (if requested)
+   and __libc_freeres() (if requested).
 */
 static void final_tidyup(ThreadId tid)
 {
-#if !defined(VGO_darwin)
-   Addr __libc_freeres_wrapper = VG_(client___libc_freeres_wrapper);
+#if defined(VGO_linux) || defined(VGO_solaris)
+   Addr freeres_wrapper = VG_(client_freeres_wrapper);
 
    vg_assert(VG_(is_running_thread)(tid));
-   
-   if ( !VG_(needs).libc_freeres ||
-        !VG_(clo_run_libc_freeres) ||
-        0 == __libc_freeres_wrapper )
-      return;			/* can't/won't do it */
+
+   if (freeres_wrapper == 0) {
+      return; /* can't do it */
+   }
+
+   Vg_FreeresToRun to_run = 0;
+   if (VG_(needs).cxx_freeres && VG_(clo_run_cxx_freeres)) {
+      to_run |= VG_RUN__GNU_CXX__FREERES;
+   }
+
+   if (VG_(needs).libc_freeres && VG_(clo_run_libc_freeres)) {
+      to_run |= VG_RUN__LIBC_FREERES;
+   }
+
+   if (to_run == 0) {
+      return; /* won't do it */
+   }
 
 #  if defined(VGP_ppc64be_linux)
-   Addr r2 = VG_(get_tocptr)( __libc_freeres_wrapper );
+   Addr r2 = VG_(get_tocptr)(freeres_wrapper);
    if (r2 == 0) {
       VG_(message)(Vg_UserMsg, 
-                   "Caught __NR_exit, but can't run __libc_freeres()\n");
+                   "Caught __NR_exit, but can't run __gnu_cxx::__freeres()\n");
       VG_(message)(Vg_UserMsg, 
-                   "   since cannot establish TOC pointer for it.\n");
+                   "   or __libc_freeres() since cannot establish TOC pointer "
+                   "for it.\n");
       return;
    }
 #  endif
 
    if (VG_(clo_verbosity) > 2  ||
        VG_(clo_trace_syscalls) ||
-       VG_(clo_trace_sched))
-      VG_(message)(Vg_DebugMsg, 
-		   "Caught __NR_exit; running __libc_freeres()\n");
+       VG_(clo_trace_sched)) {
+
+      vg_assert(to_run > 0);
+      vg_assert(to_run <= (VG_RUN__GNU_CXX__FREERES | VG_RUN__LIBC_FREERES));
+
+      const HChar *msgs[] = {"__gnu_cxx::__freeres()", "__libc_freeres()",
+                             "__gnu_cxx::__freeres and __libc_freeres()"};
+      VG_(message)(Vg_DebugMsg,
+                   "Caught __NR_exit; running %s wrapper\n", msgs[to_run - 1]);
+   }
       
-   /* set thread context to point to libc_freeres_wrapper */
-   /* ppc64be-linux note: __libc_freeres_wrapper gives us the real
+   /* set thread context to point to freeres_wrapper */
+   /* ppc64be-linux note: freeres_wrapper gives us the real
       function entry point, not a fn descriptor, so can use it
       directly.  However, we need to set R2 (the toc pointer)
       appropriately. */
-   VG_(set_IP)(tid, __libc_freeres_wrapper);
+   VG_(set_IP)(tid, freeres_wrapper);
 #  if defined(VGP_ppc64be_linux)
    VG_(threads)[tid].arch.vex.guest_GPR2 = r2;
 #  elif  defined(VGP_ppc64le_linux)
    /* setting GPR2 but not really needed, GPR12 is needed */
-   VG_(threads)[tid].arch.vex.guest_GPR2  = __libc_freeres_wrapper;
-   VG_(threads)[tid].arch.vex.guest_GPR12 = __libc_freeres_wrapper;
+   VG_(threads)[tid].arch.vex.guest_GPR2  = freeres_wrapper;
+   VG_(threads)[tid].arch.vex.guest_GPR12 = freeres_wrapper;
 #  endif
    /* mips-linux note: we need to set t9 */
 #  if defined(VGP_mips32_linux) || defined(VGP_mips64_linux)
-   VG_(threads)[tid].arch.vex.guest_r25 = __libc_freeres_wrapper;
+   VG_(threads)[tid].arch.vex.guest_r25 = freeres_wrapper;
 #  endif
 
+   /* Pass a parameter to freeres_wrapper(). */
+#  if defined(VGA_x86)
+   Addr sp = VG_(threads)[tid].arch.vex.guest_ESP;
+   *((UWord *) sp) = to_run;
+   VG_TRACK(post_mem_write, Vg_CoreClientReq, tid, sp, sizeof(UWord));
+   sp = sp - sizeof(UWord);
+   VG_(threads)[tid].arch.vex.guest_ESP = sp;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestX86State, guest_ESP),
+            sizeof(VG_(threads)[tid].arch.vex.guest_ESP));
+#  elif defined(VGA_amd64)
+   VG_(threads)[tid].arch.vex.guest_RDI = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestAMD64State, guest_RDI),
+            sizeof(VG_(threads)[tid].arch.vex.guest_RDI));
+#   elif defined(VGA_arm)
+   VG_(threads)[tid].arch.vex.guest_R0 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestARMState, guest_R0),
+            sizeof(VG_(threads)[tid].arch.vex.guest_R0));
+#  elif defined(VGA_arm64)
+   VG_(threads)[tid].arch.vex.guest_X0 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestARM64State, guest_X0),
+            sizeof(VG_(threads)[tid].arch.vex.guest_X0));
+#  elif defined(VGA_mips32)
+   VG_(threads)[tid].arch.vex.guest_r4 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestMIPS32State, guest_r4),
+            sizeof(VG_(threads)[tid].arch.vex.guest_r4));
+#  elif defined(VGA_mips64)
+   VG_(threads)[tid].arch.vex.guest_r4 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestMIPS64State, guest_r4),
+            sizeof(VG_(threads)[tid].arch.vex.guest_r4));
+#  elif defined(VGA_ppc32)
+   VG_(threads)[tid].arch.vex.guest_GPR3 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestPPC32State, guest_GPR3),
+            sizeof(VG_(threads)[tid].arch.vex.guest_GPR3));
+#  elif defined(VGA_ppc64be) || defined(VGA_ppc64le)
+   VG_(threads)[tid].arch.vex.guest_GPR3 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestPPC64State, guest_GPR3),
+            sizeof(VG_(threads)[tid].arch.vex.guest_GPR3));
+#  elif defined(VGA_s390x)
+   VG_(threads)[tid].arch.vex.guest_r2 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestS390XState, guest_r2),
+            sizeof(VG_(threads)[tid].arch.vex.guest_r2));
+#  elif defined(VGA_tilegx)
+   VG_(threads)[tid].arch.vex.guest_r0 = to_run;
+   VG_TRACK(post_reg_write, Vg_CoreClientReq, tid,
+            offsetof(VexGuestTILEGXState, guest_r0),
+            sizeof(VG_(threads)[tid].arch.vex.guest_r0));
+#else
+   I_die_here : architecture missing in m_main.c
+#endif
+
    /* Block all blockable signals by copying the real block state into
-      the thread's block state*/
+      the thread's block state */
    VG_(sigprocmask)(VKI_SIG_BLOCK, NULL, &VG_(threads)[tid].sig_mask);
    VG_(threads)[tid].tmp_sig_mask = VG_(threads)[tid].sig_mask;
 
-   /* and restore handlers to default */
+   /* and restore handlers to default. */
    VG_(set_default_handler)(VKI_SIGSEGV);
    VG_(set_default_handler)(VKI_SIGBUS);
    VG_(set_default_handler)(VKI_SIGILL);
@@ -2803,11 +2863,11 @@ static void final_tidyup(ThreadId tid)
 
    // We were exiting, so assert that...
    vg_assert(VG_(is_exiting)(tid));
-   // ...but now we're not again
+   // ...but now we're not again.
    VG_(threads)[tid].exitreason = VgSrc_None;
 
-   // run until client thread exits - ideally with LIBC_FREERES_DONE,
-   // but exit/exitgroup/signal will do
+   // Run until client thread exits - ideally with FREERES_DONE,
+   // but exit/exitgroup/signal will do.
    VG_(scheduler)(tid);
 
    vg_assert(VG_(is_exiting)(tid));
@@ -2925,12 +2985,13 @@ asm("\n"
     "\tmovl  $vgPlain_interim_stack, %eax\n"
     "\taddl  $"VG_STRINGIFY(VG_STACK_GUARD_SZB)", %eax\n"
     "\taddl  $"VG_STRINGIFY(VG_DEFAULT_STACK_ACTIVE_SZB)", %eax\n"
+    /* allocate at least 16 bytes on the new stack, and aligned */
     "\tsubl  $16, %eax\n"
     "\tandl  $~15, %eax\n"
     /* install it, and collect the original one */
     "\txchgl %eax, %esp\n"
     /* call _start_in_C_linux, passing it the startup %esp */
-    "\tpushl %eax\n"
+    "\tmovl  %eax, (%esp)\n" 
     "\tcall  _start_in_C_linux\n"
     "\thlt\n"
     ".previous\n"
@@ -3323,11 +3384,12 @@ void _start_in_C_linux ( UWord* pArgc )
    the_iicii.sp_at_startup = (Addr)pArgc;
 
 #  if defined(VGP_ppc32_linux) || defined(VGP_ppc64be_linux) \
-      || defined(VGP_ppc64le_linux) || defined(VGP_arm64_linux)
+      || defined(VGP_ppc64le_linux) || defined(VGP_arm64_linux) \
+      || defined(VGP_mips32_linux)  || defined(VGP_mips64_linux)
    {
-      /* ppc32/ppc64 can be configured with different page sizes.
-         Determine this early.  This is an ugly hack and really should
-         be moved into valgrind_main. */
+      /* ppc32/ppc64, arm64, mips32/64 can be configured with different
+         page sizes. Determine this early. This is an ugly hack and really
+         should be moved into valgrind_main. */
       UWord *sp = &pArgc[1+argc+1];
       while (*sp++ != 0)
          ;
@@ -3992,6 +4054,19 @@ UWord voucher_mach_msg_set ( UWord arg1 );
 UWord voucher_mach_msg_set ( UWord arg1 )
 {
    return 0;
+}
+
+#endif
+
+#if defined(VGO_darwin) && DARWIN_VERS == DARWIN_10_10
+
+/* This might also be needed for > DARWIN_10_10, but I have no way
+   to test for that.  Hence '==' rather than '>=' in the version
+   test above. */
+void __bzero ( void* s, UWord n );
+void __bzero ( void* s, UWord n )
+{
+   (void) VG_(memset)( s, 0, n );
 }
 
 #endif

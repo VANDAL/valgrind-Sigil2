@@ -111,7 +111,8 @@ host_triplet = @host@
 
 
 # Make sure that all test programs have threaded errno.
-@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT
+# Disable largefile support as there are test cases explictly enabling it.
+@VGCONF_OS_IS_SOLARIS_TRUE@am__append_5 = -D_REENTRANT @SOLARIS_UNDEF_LARGESOURCE@
 @COMPILER_IS_CLANG_TRUE@am__append_6 = -Wno-format-extra-args \
 @COMPILER_IS_CLANG_TRUE@	-Wno-literal-range \
 @COMPILER_IS_CLANG_TRUE@	-Wno-tautological-constant-out-of-range-compare \
@@ -123,10 +124,10 @@ check_PROGRAMS = alloc-fns$(EXEEXT) basic$(EXEEXT) big-alloc$(EXEEXT) \
 	culling1$(EXEEXT) culling2$(EXEEXT) custom_alloc$(EXEEXT) \
 	deep$(EXEEXT) ignored$(EXEEXT) ignoring$(EXEEXT) \
 	insig$(EXEEXT) long-names$(EXEEXT) long-time$(EXEEXT) \
-	malloc_usable$(EXEEXT) new-cpp$(EXEEXT) null$(EXEEXT) \
-	one$(EXEEXT) overloaded-new$(EXEEXT) pages_as_heap$(EXEEXT) \
-	peak$(EXEEXT) realloc$(EXEEXT) thresholds$(EXEEXT) \
-	zero$(EXEEXT)
+	mmapunmap$(EXEEXT) malloc_usable$(EXEEXT) new-cpp$(EXEEXT) \
+	null$(EXEEXT) one$(EXEEXT) overloaded-new$(EXEEXT) \
+	pages_as_heap$(EXEEXT) peak$(EXEEXT) realloc$(EXEEXT) \
+	thresholds$(EXEEXT) zero$(EXEEXT)
 subdir = massif/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -177,6 +178,9 @@ long_time_LDADD = $(LDADD)
 malloc_usable_SOURCES = malloc_usable.c
 malloc_usable_OBJECTS = malloc_usable.$(OBJEXT)
 malloc_usable_LDADD = $(LDADD)
+mmapunmap_SOURCES = mmapunmap.c
+mmapunmap_OBJECTS = mmapunmap.$(OBJEXT)
+mmapunmap_LDADD = $(LDADD)
 am_new_cpp_OBJECTS = new-cpp.$(OBJEXT)
 new_cpp_OBJECTS = $(am_new_cpp_OBJECTS)
 new_cpp_LDADD = $(LDADD)
@@ -248,14 +252,14 @@ am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = alloc-fns.c basic.c big-alloc.c culling1.c culling2.c \
 	custom_alloc.c deep.c ignored.c ignoring.c insig.c \
-	long-names.c long-time.c malloc_usable.c $(new_cpp_SOURCES) \
-	null.c one.c $(overloaded_new_SOURCES) pages_as_heap.c peak.c \
-	realloc.c thresholds.c zero.c
+	long-names.c long-time.c malloc_usable.c mmapunmap.c \
+	$(new_cpp_SOURCES) null.c one.c $(overloaded_new_SOURCES) \
+	pages_as_heap.c peak.c realloc.c thresholds.c zero.c
 DIST_SOURCES = alloc-fns.c basic.c big-alloc.c culling1.c culling2.c \
 	custom_alloc.c deep.c ignored.c ignoring.c insig.c \
-	long-names.c long-time.c malloc_usable.c $(new_cpp_SOURCES) \
-	null.c one.c $(overloaded_new_SOURCES) pages_as_heap.c peak.c \
-	realloc.c thresholds.c zero.c
+	long-names.c long-time.c malloc_usable.c mmapunmap.c \
+	$(new_cpp_SOURCES) null.c one.c $(overloaded_new_SOURCES) \
+	pages_as_heap.c peak.c realloc.c thresholds.c zero.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -360,6 +364,7 @@ HWCAP_HAS_HTM = @HWCAP_HAS_HTM@
 HWCAP_HAS_ISA_2_05 = @HWCAP_HAS_ISA_2_05@
 HWCAP_HAS_ISA_2_06 = @HWCAP_HAS_ISA_2_06@
 HWCAP_HAS_ISA_2_07 = @HWCAP_HAS_ISA_2_07@
+HWCAP_HAS_ISA_3_00 = @HWCAP_HAS_ISA_3_00@
 HWCAP_HAS_VSX = @HWCAP_HAS_VSX@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -392,6 +397,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SOLARIS_UNDEF_LARGESOURCE = @SOLARIS_UNDEF_LARGESOURCE@
 STRIP = @STRIP@
 VALT_LOAD_ADDRESS_PRI = @VALT_LOAD_ADDRESS_PRI@
 VALT_LOAD_ADDRESS_SEC = @VALT_LOAD_ADDRESS_SEC@
@@ -552,14 +558,14 @@ AM_CFLAGS_PSO_ARM64_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_ARM64_LINUX = @FLAG_M64@ -g
 AM_FLAG_M3264_X86_DARWIN = -arch i386
 AM_CFLAGS_X86_DARWIN = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
-				-mmacosx-version-min=10.5 \
+				-mmacosx-version-min=10.6 \
 				-fno-stack-protector -fno-pic -fno-PIC
 
 AM_CFLAGS_PSO_X86_DARWIN = $(AM_CFLAGS_X86_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_DARWIN = -arch i386 -g
 AM_FLAG_M3264_AMD64_DARWIN = -arch x86_64
 AM_CFLAGS_AMD64_DARWIN = $(WERROR) -arch x86_64 $(AM_CFLAGS_BASE) \
-			    -mmacosx-version-min=10.5 -fno-stack-protector
+			    -mmacosx-version-min=10.6 -fno-stack-protector
 
 AM_CFLAGS_PSO_AMD64_DARWIN = $(AM_CFLAGS_AMD64_DARWIN) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_AMD64_DARWIN = -arch x86_64 -g
@@ -583,7 +589,8 @@ AM_CFLAGS_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE)
 AM_CFLAGS_PSO_TILEGX_LINUX = @FLAG_M64@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_FLAG_M3264_X86_SOLARIS = @FLAG_M32@
 AM_CFLAGS_X86_SOLARIS = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY_2@ \
-			 	$(AM_CFLAGS_BASE) -fomit-frame-pointer
+				$(AM_CFLAGS_BASE) -fomit-frame-pointer \
+				@SOLARIS_UNDEF_LARGESOURCE@
 
 AM_CFLAGS_PSO_X86_SOLARIS = @FLAG_M32@ $(AM_CFLAGS_BASE) $(AM_CFLAGS_PSO_BASE)
 AM_CCASFLAGS_X86_SOLARIS = @FLAG_M32@ -g -D_ASM
@@ -669,6 +676,8 @@ EXTRA_DIST = \
 	long-names.post.exp long-names.stderr.exp long-names.vgtest \
 	long-time.post.exp long-time.stderr.exp long-time.vgtest \
 	malloc_usable.stderr.exp malloc_usable.vgtest \
+	mmapunmap.post.exp mmapunmap.post.exp-ppc64 \
+	mmapunmap.stderr.exp mmapunmap.vgtest \
 	new-cpp.post.exp new-cpp.stderr.exp new-cpp.vgtest \
 	no-stack-no-heap.post.exp no-stack-no-heap.stderr.exp no-stack-no-heap.vgtest \
 	null.post.exp null.stderr.exp null.vgtest \
@@ -788,6 +797,10 @@ malloc_usable$(EXEEXT): $(malloc_usable_OBJECTS) $(malloc_usable_DEPENDENCIES) $
 	@rm -f malloc_usable$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(malloc_usable_OBJECTS) $(malloc_usable_LDADD) $(LIBS)
 
+mmapunmap$(EXEEXT): $(mmapunmap_OBJECTS) $(mmapunmap_DEPENDENCIES) $(EXTRA_mmapunmap_DEPENDENCIES) 
+	@rm -f mmapunmap$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(mmapunmap_OBJECTS) $(mmapunmap_LDADD) $(LIBS)
+
 new-cpp$(EXEEXT): $(new_cpp_OBJECTS) $(new_cpp_DEPENDENCIES) $(EXTRA_new_cpp_DEPENDENCIES) 
 	@rm -f new-cpp$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(new_cpp_OBJECTS) $(new_cpp_LDADD) $(LIBS)
@@ -843,6 +856,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/long-names.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/long-time.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/malloc_usable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mmapunmap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/new-cpp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/null.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/one.Po@am__quote@
