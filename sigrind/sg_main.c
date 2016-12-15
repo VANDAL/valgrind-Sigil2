@@ -39,6 +39,7 @@
 #include "global.h"
 #include "callgrind.h"
 
+#include "sigil2_ipc.h"
 #include "log_events.h"
 #include "Sigil2/PrimitiveEnums.h"
 
@@ -357,7 +358,13 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                case Iex_Triop:
                case Iex_Qop:
                   if (SGL_(clo).gen_comp == True)
-                     addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
+                  {
+                     IRType op_type = typeOfIRExpr(sbIn->tyenv, data);
+                     /* SIMD and decimal floating point ops are unsupported.
+                      * See VEX/pub/libvex_ir.h */
+                     if (op_type < Ity_D32 || op_type == Ity_F128)
+                        addEvent_Comp( &clgs, curr_inode, data->tag, op_type );
+                  }
                   break;
                default:
                   /*don't care*/
@@ -1539,7 +1546,8 @@ static void finish(void)
   CLG_(forall_threads)(unwind_thread);
 
   /* finish IPC with Sigil2 */
-  SGL_(finish_IPC)();
+  SGL_(term_IPC)();
+  SGL_(end_logging)();
 }
 
 

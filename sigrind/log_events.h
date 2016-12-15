@@ -13,12 +13,7 @@
  * handling. This is how dynamic application info is sent to Sigil2.
  ********************************************************************/
 
-/*
- * Initializes interprocess communication with Sigil2.
- * THIS MUST BE RUN BEFORE ANY LOGGING FUNCTIONS ARE INVOKED 
- */
-void SGL_(init_IPC)(void);
-void SGL_(finish_IPC)(void);
+void SGL_(end_logging)(void);
 
 /* 1 Instruction */
 void SGL_(log_1I0D)(InstrInfo* ii) VG_REGPARM(1);

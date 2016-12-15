@@ -803,7 +803,7 @@ extern Bool* SGL_(thread_in_synccall);
 extern ThreadId SGL_(active_tid);
 
 #define EVENT_GENERATION_ENABLED  \
-   !SGL_(thread_in_synccall)[SGL_(active_tid)] && (SGL_(is_in_event_collect_func))
+   (!SGL_(thread_in_synccall)[SGL_(active_tid)] && (SGL_(is_in_event_collect_func)))
 
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);

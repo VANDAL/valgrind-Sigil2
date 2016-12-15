@@ -37,6 +37,7 @@ SIGRIND_SOURCES_COMMON = \
 	jumps.c \
 	threads.c \
 	log_events.c \
+	sigil2_ipc.c \
 	sg_main.c 
 
 # We sneakily include "PrimitveEnums.h" from Sigil2
