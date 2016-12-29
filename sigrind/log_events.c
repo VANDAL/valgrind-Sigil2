@@ -24,6 +24,7 @@ Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
 #include "log_events.h"
 #include "sigil2_ipc.h"
+#include "coregrind/pub_core_libcprint.h"
 
 //FIXME these aren't needed for Sigil, but deleting them causes
 /* Following global vars are setup before by setup_bbcc():

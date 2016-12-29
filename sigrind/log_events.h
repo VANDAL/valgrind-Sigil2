@@ -2,7 +2,6 @@
 #define SGL_LOG_EVENTS_H
 
 #include "global.h"
-#include "coregrind/pub_core_libcprint.h"
 
 /********************************************************************
  * Event Logging in Sigrind
@@ -16,25 +15,25 @@
 void SGL_(end_logging)(void);
 
 /* 1 Instruction */
-void SGL_(log_1I0D)(InstrInfo* ii) VG_REGPARM(1);
+void SGL_(log_1I0D)(InstrInfo* ii);
 
 /* 2 Instructions */
-void SGL_(log_2I0D)(InstrInfo* ii1, InstrInfo* ii2) VG_REGPARM(2);
+void SGL_(log_2I0D)(InstrInfo* ii1, InstrInfo* ii2);
 
 /* 3 Instructions */
-void SGL_(log_3I0D)(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3) VG_REGPARM(3);
+void SGL_(log_3I0D)(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3);
 
 /* 1 Instruction, 1 Data Read */
-void SGL_(log_1I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
+void SGL_(log_1I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size);
 
 /* 1 Data Read */
-void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
+void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size);
 
 /* 1 Instruction, 1 Data Write */
-void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
+void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size);
 
 /* 1 Data Write */
-void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
+void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size);
 
 /* 1 Compute event */
 void SGL_(log_comp_event)(InstrInfo* ii, IRType op_type, IRExprTag arity);
@@ -49,12 +48,12 @@ void SGL_(log_fn_leave)(fn_node* fn);
 void SGL_(log_sync)(UChar type, UWord data);
 
 /* unimplemented */
-void SGL_(log_global_event)(InstrInfo* ii) VG_REGPARM(1);
+void SGL_(log_global_event)(InstrInfo* ii);
 
 /* unimplemented */
-void SGL_(log_cond_branch)(InstrInfo* ii, Word taken) VG_REGPARM(2);
+void SGL_(log_cond_branch)(InstrInfo* ii, Word taken);
 
 /* unimplemented */
-void SGL_(log_ind_branch)(InstrInfo* ii, UWord actual_dst) VG_REGPARM(2);
+void SGL_(log_ind_branch)(InstrInfo* ii, UWord actual_dst);
 
 #endif
