@@ -80,13 +80,13 @@ static inline void set_next_buffer(void)
 
 static inline Bool is_events_full(void)
 {
-    return curr_buf->events_used == MAX_EVENTS;
+    return curr_buf->events_used == SIGIL2_MAX_EVENTS;
 }
 
 
 static inline Bool is_pool_full(UInt size)
 {
-    return (curr_buf->pool_used + size) > POOL_BYTES;
+    return (curr_buf->pool_used + size) > SIGIL2_POOL_BYTES;
 }
 
 
