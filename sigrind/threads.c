@@ -85,10 +85,10 @@ void CLG_(init_threads)()
     SGL_(thread_in_synccall) = CLG_MALLOC("cl.threads.it.1", VG_N_THREADS * sizeof *SGL_(thread_in_synccall));
 
     for(i=0;i<VG_N_THREADS;i++)
-    {   
+    {
         thread[i] = 0;
         SGL_(thread_in_synccall)[i] = False;
-    }   
+    }
     CLG_(current_tid) = VG_INVALID_THREADID;
     SGL_(active_tid) = VG_INVALID_THREADID;
 }
@@ -125,7 +125,7 @@ thread_info* new_thread(void)
     CLG_(init_fn_array)( &(t->fn_active) );
     CLG_(init_bbcc_hash)( &(t->bbccs) );
     CLG_(init_jcc_hash)( &(t->jccs) );
-    
+
     return t;
 }
 
@@ -183,7 +183,7 @@ void CLG_(switch_thread)(ThreadId tid)
     exec_state_restore();
     CLG_(set_current_call_stack)( &(t->calls) );
     CLG_(set_current_fn_stack)  ( &(t->fns) );
-    
+
     CLG_(set_current_fn_array)  ( &(t->fn_active) );
     /* If we cumulate costs of threads, use TID 1 for all jccs/bccs */
     if (!CLG_(clo).separate_threads) t = thread[1];
@@ -256,7 +256,7 @@ void CLG_(post_signal)(ThreadId tid, Int sigNum)
     CLG_ASSERT(es != 0);
     while(CLG_(current_call_stack).sp > es->call_stack_bottom)
       CLG_(pop_call_stack)();
-    
+
     if (CLG_(current_state).cxt) {
       /* correct active counts */
       fn_number = CLG_(current_state).cxt->fn[0]->number;
@@ -381,7 +381,7 @@ exec_state* top_exec_state(void)
  * Returns a pointer to the structure.
  */
 static exec_state* push_exec_state(int sigNum)
-{   
+{
   Int sp;
   exec_state* es;
 
@@ -430,7 +430,7 @@ static
 exec_state* exec_state_restore(void)
 {
   exec_state* es = top_exec_state();
-  
+
   CLG_(current_state).cxt     = es->cxt;
   CLG_(current_state).collect = es->collect;
   CLG_(current_state).jmps_passed = es->jmps_passed;
@@ -438,7 +438,7 @@ exec_state* exec_state_restore(void)
   CLG_(current_state).nonskipped = es->nonskipped;
   CLG_(current_state).cost    = es->cost;
   CLG_(current_state).sig     = es->sig;
-    
+
   CLG_DEBUGIF(1) {
 	CLG_DEBUG(1, "  exec_state_restore(sig %d): collect %s, jmps_passed %d\n",
 		  es->sig, es->collect ? "Yes": "No", es->jmps_passed);
