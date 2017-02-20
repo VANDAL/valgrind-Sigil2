@@ -2,8 +2,12 @@
 #include "coregrind/pub_core_libcfile.h"
 #include "coregrind/pub_core_aspacemgr.h"
 #include "coregrind/pub_core_syscall.h"
-#include "include/pub_tool_vki.h" // errnum
 #include "pub_tool_basics.h"
+#include "pub_tool_vki.h"            // errnum
+
+/* nanosleep */
+#include "/usr/include/asm/unistd.h" //__NR_nanosleep
+#include "time.h"                    // struct timespec;
 
 /* IPC channels */
 static Bool initialized = False;
@@ -229,6 +233,20 @@ void SGL_(init_IPC)()
     HChar fullfifo_path[filename_len];
     VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_FULLFIFO_NAME);
 
+#if defined(VGO_linux) && defined(VGA_amd64)
+    /* TODO any serious implications of calling syscalls directly?
+     * MDL20170220 The "VG_(syscall)" wrappers don't look to do much
+     * else besides doing platform specific setup.
+     * In our case, we only accommodate x86_64 or aarch64. */
+    struct timespec req;
+    req.tv_sec = 0;
+    req.tv_nsec = 500000000;
+    /* wait some time before trying to connect,
+     * giving Sigil2 time to bring up IPC */
+    VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
+#else
+#error "Only linux supported"
+#endif
 
     /* XXX Valgrind might get stuck waiting for Sigil
      * if Sigil unexpectedly exits before trying
