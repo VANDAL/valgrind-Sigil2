@@ -1,7 +1,7 @@
 #ifndef SGL_IPC_H
 #define SGL_IPC_H
 
-#include "Frontends/Sigrind/SigrindIPC.h"
+#include "Frontends/DbiIpcCommon.h"
 #include "global.h"
 
 /* An implementation of interprocess communication with the Sigil2 frontend.

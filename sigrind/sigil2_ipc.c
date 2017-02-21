@@ -10,19 +10,19 @@
 static Bool initialized = False;
 static Int emptyfd;
 static Int fullfd;
-static SigrindSharedData* shmem;
+static Sigil2DBISharedData* shmem;
 
 /* cached IPC state */
 static UInt           curr_idx;  //buffer index
 static EventBuffer*   curr_buf;  //buffer
 static BufferedSglEv* curr_slot; //Sigil2 event
 static char*          pool_slot; //function name
-static Bool           is_full[NUM_BUFFERS]; //track available buffers
+static Bool           is_full[SIGIL2_DBI_BUFFERS]; //track available buffers
 
 
 static inline void set_and_init_buffer(UInt buf_idx)
 {
-    curr_buf = shmem->sigrind_buf + buf_idx;
+    curr_buf = shmem->buf + buf_idx;
 
     curr_buf->events_used = 0;
     curr_slot = curr_buf->events + curr_buf->events_used;
@@ -52,7 +52,7 @@ static inline void set_next_buffer(void)
 {
     /* try the next buffer, circular */
     ++curr_idx;
-    if (curr_idx == NUM_BUFFERS)
+    if (curr_idx == SIGIL2_DBI_BUFFERS)
         curr_idx = 0;
 
     /* if the next buffer is full,
@@ -69,7 +69,7 @@ static inline void set_next_buffer(void)
             VG_(exit)(1);
         }
 
-        tl_assert(buf_idx < NUM_BUFFERS);
+        tl_assert(buf_idx < SIGIL2_DBI_BUFFERS);
         tl_assert(buf_idx == curr_idx);
         curr_idx = buf_idx;
         is_full[curr_idx] = False;
@@ -156,26 +156,11 @@ static int open_fifo(const HChar *fifo_path, int flags)
 }
 
 
-static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
+static Sigil2DBISharedData* open_shmem(const HChar *shmem_path, int flags)
 {
     tl_assert(initialized == False);
 
-    /* Wait a bit for the Sigil2 interface to come up.
-     * Valgrind doesn't provide an interface to sleep itself, so just chew
-     * through cycles for a while.
-     * XXX Not a good solution for a single-core machine */
-    long wait = 10000000; // fudge number
-    while (VG_(access)(shmem_path, False, False, False) != 0)
-    {
-        if (wait-- <= 0)
-        {
-            VG_(umsg)("Cannot find shared_mem file %s\n", shmem_path);
-            VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-            VG_(exit)(1);
-        }
-    }
-
-    SysRes res = VG_(open) (shmem_path, flags, 0600);
+    SysRes res = VG_(open)(shmem_path, flags, 0600);
     if (sr_isError (res))
     {
         VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
@@ -185,10 +170,9 @@ static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
     }
 
     int shared_mem_fd = sr_Res(res);
-
-    res = VG_(am_shared_mmap_file_float_valgrind)
-        (sizeof(SigrindSharedData), VKI_PROT_READ|VKI_PROT_WRITE,
-         shared_mem_fd, (Off64T)0);
+    res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(Sigil2DBISharedData),
+                                                  VKI_PROT_READ|VKI_PROT_WRITE,
+                                                  shared_mem_fd, (Off64T)0);
     if (sr_isError(res))
     {
         VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
@@ -198,9 +182,9 @@ static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
     }
 
     Addr addr_shared = sr_Res (res);
-    VG_(close) (shared_mem_fd);
+    VG_(close)(shared_mem_fd);
 
-    return (SigrindSharedData*) addr_shared;
+    return (Sigil2DBISharedData*) addr_shared;
 }
 
 
@@ -218,17 +202,17 @@ void SGL_(init_IPC)()
     Int filename_len;
 
     //+1 for '/'; len should be strlen + null
-    filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 2;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_NAME) + 2;
     HChar shmem_path[filename_len];
-    VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_SHMEM_NAME);
+    VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_NAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 2;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_NAME) + 2;
     HChar emptyfifo_path[filename_len];
-    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_EMPTYFIFO_NAME);
+    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_NAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 2;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_NAME) + 2;
     HChar fullfifo_path[filename_len];
-    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGRIND_FULLFIFO_NAME);
+    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_NAME);
 
 #if defined(VGO_linux) && defined(VGA_amd64)
     /* TODO any serious implications of calling syscalls directly?
@@ -255,7 +239,7 @@ void SGL_(init_IPC)()
     /* initialize cached IPC state */
     curr_idx = 0;
     set_and_init_buffer(curr_idx);
-    for (UInt i=0; i<NUM_BUFFERS; ++i)
+    for (UInt i=0; i<SIGIL2_DBI_BUFFERS; ++i)
         is_full[i] = False;
 
     initialized = True;
@@ -267,7 +251,7 @@ void SGL_(term_IPC)(void)
     tl_assert(initialized == True);
 
     /* send finish sequence */
-    UInt finished = SIGRIND_FINISHED;
+    UInt finished = SIGIL2_DBI_FINISHED;
     if ( VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished) ||
          VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
     {
@@ -278,7 +262,7 @@ void SGL_(term_IPC)(void)
     }
 
     /* wait until Sigrind disconnects */
-    while ( VG_(read)(emptyfd, &finished, sizeof(finished)) > 0 );
+    while (VG_(read)(emptyfd, &finished, sizeof(finished)) > 0);
 
     VG_(close)(emptyfd);
     VG_(close)(fullfd);
