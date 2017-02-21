@@ -3,11 +3,8 @@
 #include "coregrind/pub_core_aspacemgr.h"
 #include "coregrind/pub_core_syscall.h"
 #include "pub_tool_basics.h"
-#include "pub_tool_vki.h"            // errnum
-
-/* nanosleep */
-#include "/usr/include/asm/unistd.h" //__NR_nanosleep
-#include "time.h"                    // struct timespec;
+#include "pub_tool_vki.h"       // errnum, vki_timespec
+#include "pub_tool_vkiscnums.h" // __NR_nanosleep
 
 /* IPC channels */
 static Bool initialized = False;
@@ -238,7 +235,7 @@ void SGL_(init_IPC)()
      * MDL20170220 The "VG_(syscall)" wrappers don't look to do much
      * else besides doing platform specific setup.
      * In our case, we only accommodate x86_64 or aarch64. */
-    struct timespec req;
+    struct vki_timespec req;
     req.tv_sec = 0;
     req.tv_nsec = 500000000;
     /* wait some time before trying to connect,
