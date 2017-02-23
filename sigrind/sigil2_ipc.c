@@ -201,22 +201,22 @@ void SGL_(init_IPC)()
     Int ipc_dir_len = VG_(strlen)(SGL_(clo).ipc_dir);
     Int filename_len;
 
-    //+1 for '/'; len should be strlen + null
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_NAME) + 2;
+    //len is strlen + null + other chars (/ and -0)
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_NAME) + 4;
     HChar shmem_path[filename_len];
-    VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_NAME);
+    VG_(snprintf)(shmem_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_NAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_NAME) + 2;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_NAME) + 4;
     HChar emptyfifo_path[filename_len];
-    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_NAME);
+    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_NAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_NAME) + 2;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_NAME) + 4;
     HChar fullfifo_path[filename_len];
-    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_NAME);
+    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_NAME);
 
 #if defined(VGO_linux) && defined(VGA_amd64)
-    /* TODO any serious implications of calling syscalls directly?
-     * MDL20170220 The "VG_(syscall)" wrappers don't look to do much
+    /* TODO any serious implications in Valgrind of calling syscalls directly?
+     * MDL20170220 The "VG_(syscall)" wrappers don't look like they do much
      * else besides doing platform specific setup.
      * In our case, we only accommodate x86_64 or aarch64. */
     struct vki_timespec req;
@@ -252,8 +252,8 @@ void SGL_(term_IPC)(void)
 
     /* send finish sequence */
     UInt finished = SIGIL2_DBI_FINISHED;
-    if ( VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished) ||
-         VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
+    if (VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) ||
+        VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished))
     {
         VG_(umsg)("error VG_(write)\n");
         VG_(umsg)("error writing to Sigrind fifo\n");
