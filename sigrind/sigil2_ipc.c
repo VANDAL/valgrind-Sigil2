@@ -226,7 +226,7 @@ void SGL_(init_IPC)()
      * giving Sigil2 time to bring up IPC */
     VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
 #else
-#error "Only linux supported"
+#error "Only linux is supported"
 #endif
 
     /* XXX Valgrind might get stuck waiting for Sigil

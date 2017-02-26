@@ -144,6 +144,7 @@ void SGL_(switch_thread)(ThreadId tid)
 
 void CLG_(switch_thread)(ThreadId tid)
 {
+  SGL_(switch_thread)(tid);
   if (tid == CLG_(current_tid)) return;
 
   CLG_DEBUG(0, ">> thread %u (was %u)\n", tid, CLG_(current_tid));

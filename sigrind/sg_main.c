@@ -1653,7 +1653,7 @@ void CLG_(pre_clo_init)(void)
     VG_(details_name)            ("Sigrind");
     VG_(details_version)         (NULL);
     VG_(details_description)     ("");
-    VG_(details_copyright_author)("Copyright (C) 2015-2016, "
+    VG_(details_copyright_author)("Copyright (C) 2015-2017, "
 				  "by Michael Lui et al.");
     VG_(details_bug_reports_to)  (VG_BUGS_TO);
     VG_(details_avg_translation_sizeB) ( 500 );
@@ -1683,6 +1683,24 @@ void CLG_(pre_clo_init)(void)
     VG_(track_pre_deliver_signal) ( & CLG_(pre_signal) );
     VG_(track_post_deliver_signal)( & CLG_(post_signal) );
 
+    /* Track syscalls */
+    /* XXX MDL20170226
+     * Right now syscalls are not being monitored.
+     * There hasn't been a convincing case made that memory reads/writes
+     * from syscalls are significant enough to warrant the extra monitoring.
+     * If required, the following callbacks can be used to get addt'l info
+     * every time a syscall writes to an address, and also in general when
+     * a syscall is invoked.
+     *
+     * VG_(track_post_mem_write) (vgcore_memwrite_callback)
+     * VG_(needs_syscall_wrapp)  (pre_syscall_callback,
+     *                            post_syscall_callback)
+     *
+     * For more info look in ../include/pub_tool_tooliface.h
+     * The other core event callbacks offered by Valgrind probably aren't
+     * relelvant for us. */
+
+    /* Defaults */
     SGL_(set_clo_defaults)();
     CLG_(set_clo_defaults)();
 }

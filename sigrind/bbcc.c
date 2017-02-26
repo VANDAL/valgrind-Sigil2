@@ -570,12 +570,6 @@ void CLG_(setup_bbcc)(BB* bb)
   {
      CLG_(switch_thread)(tid);
   }
-
-  /* http://valgrind-developers.narkive.com/ualztznb/thread-change-callback */
-  if (UNLIKELY(tid != SGL_(active_tid)))
-  {
-     SGL_(switch_thread)(tid);
-  }
 #else
   CLG_ASSERT(VG_(get_running_tid)() == CLG_(current_tid));
 #endif
