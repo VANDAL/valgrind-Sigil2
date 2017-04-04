@@ -133,23 +133,35 @@ static int open_fifo(const HChar *fifo_path, int flags)
 {
     tl_assert(initialized == False);
 
-    int fd;
-    SysRes res = VG_(open) (fifo_path, flags, 0600);
-    if (sr_isError (res))
+    int tries = 0;
+    const int max_tries = 4;
+    int fd = VG_(fd_open)(fifo_path, flags, 0600);
+    while (fd < 0)
     {
-        VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
-        VG_(umsg)("cannot open fifo file %s\n", fifo_path);
-        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-        VG_(exit) (1);
-    }
-
-    fd = sr_Res(res);
-    fd = VG_(safe_fd)(fd);
-    if (fd == -1)
-    {
-        VG_(umsg)("FIFO for Sigrind failed\n");
-        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-        VG_(exit) (1);
+        if (++tries < max_tries)
+        {
+#if defined(VGO_linux) && defined(VGA_amd64)
+            /* TODO any serious implications in Valgrind of calling syscalls directly?
+             * MDL20170220 The "VG_(syscall)" wrappers don't look like they do much
+             * else besides doing platform specific setup.
+             * In our case, we only accommodate x86_64 or aarch64. */
+            struct vki_timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 500000000;
+            /* wait some time before trying to connect,
+             * giving Sigil2 time to bring up IPC */
+            VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
+#else
+#error "Only linux is supported"
+#endif
+            fd = VG_(fd_open)(fifo_path, flags, 0600);
+        }
+        else
+        {
+            VG_(umsg)("FIFO for Sigrind failed\n");
+            VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+            VG_(exit) (1);
+        }
     }
 
     return fd;
@@ -160,19 +172,17 @@ static Sigil2DBISharedData* open_shmem(const HChar *shmem_path, int flags)
 {
     tl_assert(initialized == False);
 
-    SysRes res = VG_(open)(shmem_path, flags, 0600);
-    if (sr_isError (res))
+    int shared_mem_fd = VG_(fd_open)(shmem_path, flags, 0600);
+    if (shared_mem_fd < 0)
     {
-        VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
         VG_(umsg)("Cannot open shared_mem file %s\n", shmem_path);
         VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
         VG_(exit)(1);
     }
 
-    int shared_mem_fd = sr_Res(res);
-    res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(Sigil2DBISharedData),
-                                                  VKI_PROT_READ|VKI_PROT_WRITE,
-                                                  shared_mem_fd, (Off64T)0);
+    SysRes res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(Sigil2DBISharedData),
+                                                         VKI_PROT_READ|VKI_PROT_WRITE,
+                                                         shared_mem_fd, (Off64T)0);
     if (sr_isError(res))
     {
         VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
@@ -214,24 +224,6 @@ void SGL_(init_IPC)()
     HChar fullfifo_path[filename_len];
     VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_NAME);
 
-#if defined(VGO_linux) && defined(VGA_amd64)
-    /* TODO any serious implications in Valgrind of calling syscalls directly?
-     * MDL20170220 The "VG_(syscall)" wrappers don't look like they do much
-     * else besides doing platform specific setup.
-     * In our case, we only accommodate x86_64 or aarch64. */
-    struct vki_timespec req;
-    req.tv_sec = 0;
-    req.tv_nsec = 500000000;
-    /* wait some time before trying to connect,
-     * giving Sigil2 time to bring up IPC */
-    VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
-#else
-#error "Only linux is supported"
-#endif
-
-    /* XXX Valgrind might get stuck waiting for Sigil
-     * if Sigil unexpectedly exits before trying
-     * to connect; unlikely, but could implement timeout */
     emptyfd = open_fifo(emptyfifo_path, VKI_O_RDONLY);
     fullfd  = open_fifo(fullfifo_path, VKI_O_WRONLY);
     shmem   = open_shmem(shmem_path, VKI_O_RDWR);
