@@ -44,8 +44,12 @@ void SGL_(log_fn_entry)(fn_node* fn);
 /* Function fn exited */
 void SGL_(log_fn_leave)(fn_node* fn);
 
-/* Synchronization event or thread context swap */
-void SGL_(log_sync)(UChar type, UWord data);
+/* Synchronization event or thread context swap
+ * Some sync events have two pieces of data,
+ * e.g. mutex and condition variable in a conditional wait.
+ * Otherwise only the first data argument is used */
+#define UNUSED_SYNC_DATA 0
+void SGL_(log_sync)(UChar type, UWord data1, UWord data2);
 
 /* unimplemented */
 void SGL_(log_global_event)(InstrInfo* ii);

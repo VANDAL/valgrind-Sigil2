@@ -141,7 +141,7 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType op_type, IRExprTag arity)
 }
 
 
-void SGL_(log_sync)(UChar type, UWord data)
+void SGL_(log_sync)(UChar type, UWord data1, UWord data2)
 {
     if (SGL_(clo).gen_sync == True)
     {
@@ -150,9 +150,10 @@ void SGL_(log_sync)(UChar type, UWord data)
 #endif
 
         BufferedSglEv* slot = SGL_(acq_event_slot)();
-        slot->tag       = SGL_SYNC_TAG;
-        slot->sync.type = type;
-        slot->sync.id   = data;
+        slot->tag           = SGL_SYNC_TAG;
+        slot->sync.type     = type;
+        slot->sync.data[0]  = data1;
+        slot->sync.data[1]  = data2;
     }
 }
 
