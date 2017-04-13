@@ -31,7 +31,7 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
-//TODO Cleanup leftover Callgrind functionality
+// TODO(cleanup) leftover Callgrind functionality
 
 
 #include "config.h"
@@ -41,7 +41,7 @@
 
 #include "sigil2_ipc.h"
 #include "log_events.h"
-#include "Sigil2/PrimitiveEnums.h"
+#include "Core/PrimitiveEnums.h"
 
 #include "coregrind/pub_core_libcfile.h"
 #include "coregrind/pub_core_clientstate.h"

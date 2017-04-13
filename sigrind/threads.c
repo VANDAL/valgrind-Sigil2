@@ -27,8 +27,8 @@
 */
 
 #include "log_events.h"
-#include "Sigil2/PrimitiveEnums.h"
 #include "global.h"
+#include "Core/PrimitiveEnums.h"
 
 #include "pub_tool_threadstate.h"
 

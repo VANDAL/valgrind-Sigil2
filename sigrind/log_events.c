@@ -26,7 +26,7 @@ Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 #include "sigil2_ipc.h"
 #include "coregrind/pub_core_libcprint.h"
 
-//FIXME these aren't needed for Sigil, but deleting them causes
+//TODO(someday) these aren't needed for Sigil, but deleting them causes
 /* Following global vars are setup before by setup_bbcc():
  *
  * - Addr   CLG_(bb_base)     (instruction start address of original BB)
@@ -62,10 +62,10 @@ void SGL_(log_1I0D)(InstrInfo* ii)
         cxt_events++;
 #endif
 
-        BufferedSglEv* slot = SGL_(acq_event_slot)();
-        slot->tag      = SGL_CXT_TAG;
-        slot->cxt.type = SGLPRIM_CXT_INSTR;
-        slot->cxt.id   = ii->instr_addr;
+        SglEvVariant* slot = SGL_(acq_event_slot)();
+        slot->tag          = SGL_CXT_TAG;
+        slot->cxt.type     = SGLPRIM_CXT_INSTR;
+        slot->cxt.id       = ii->instr_addr;
     }
 }
 
@@ -81,7 +81,7 @@ static inline void log_mem(Int type, Addr data_addr, Word data_size)
         ++mem_events;
 #endif
 
-        BufferedSglEv* slot = SGL_(acq_event_slot)();
+        SglEvVariant* slot   = SGL_(acq_event_slot)();
         slot->tag            = SGL_MEM_TAG;
         slot->mem.type       = type;
         slot->mem.begin_addr = data_addr;
@@ -111,7 +111,7 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType op_type, IRExprTag arity)
         ++comp_events;
 #endif
 
-        BufferedSglEv* slot = SGL_(acq_event_slot)();
+        SglEvVariant* slot = SGL_(acq_event_slot)();
         slot->tag = SGL_COMP_TAG;
 
         if (op_type < Ity_F16)
@@ -149,7 +149,7 @@ void SGL_(log_sync)(UChar type, UWord data1, UWord data2)
         ++sync_events;
 #endif
 
-        BufferedSglEv* slot = SGL_(acq_event_slot)();
+        SglEvVariant* slot  = SGL_(acq_event_slot)();
         slot->tag           = SGL_SYNC_TAG;
         slot->sync.type     = type;
         slot->sync.data[0]  = data1;
@@ -169,13 +169,13 @@ static inline void log_fn(Int type, fn_node* fn)
         /* request both slots simultaneously to allow proper flushing */
         /* TODO set max size for name length? */
         Int len = VG_(strlen)(fn->name) + 1;
-        EventPoolSlotTuple tuple = SGL_(acq_event_pool_slot)(len);
+        EventNameSlotTuple tuple = SGL_(acq_event_name_slot)(len);
 
-        VG_(strncpy)(tuple.pool_slot, fn->name, len);
+        VG_(strncpy)(tuple.name_slot, fn->name, len);
         tuple.event_slot->tag      = SGL_CXT_TAG;
         tuple.event_slot->cxt.type = type;
         tuple.event_slot->cxt.len  = len;
-        tuple.event_slot->cxt.idx  = tuple.pool_idx;
+        tuple.event_slot->cxt.idx  = tuple.name_idx;
     }
 }
 void SGL_(log_fn_entry)(fn_node* fn)

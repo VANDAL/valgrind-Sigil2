@@ -28,7 +28,7 @@
 
 #include "global.h"
 #include "log_events.h"
-#include "Sigil2/PrimitiveEnums.h"
+#include "Core/PrimitiveEnums.h"
 
 /*------------------------------------------------------------*/
 /*--- Call stack, operations                               ---*/

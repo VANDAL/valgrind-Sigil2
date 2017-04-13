@@ -6,29 +6,34 @@
 #include "pub_tool_vki.h"       // errnum, vki_timespec
 #include "pub_tool_vkiscnums.h" // __NR_nanosleep
 
-/* IPC channels */
 static Bool initialized = False;
 static Int emptyfd;
 static Int fullfd;
 static Sigil2DBISharedData* shmem;
+/* IPC channel */
 
+
+static UInt           curr_idx;
+static EventBuffer*   curr_ev_buf;
+static SglEvVariant*  curr_ev_slot;
+static NameBuffer*    curr_name_buf;
+static char*          curr_name_slot;
 /* cached IPC state */
-static UInt           curr_idx;  //buffer index
-static EventBuffer*   curr_buf;  //buffer
-static BufferedSglEv* curr_slot; //Sigil2 event
-static char*          pool_slot; //function name
-static Bool           is_full[SIGIL2_DBI_BUFFERS]; //track available buffers
+
+
+static Bool is_full[SIGIL2_DBI_BUFFERS];
+/* track available buffers */
 
 
 static inline void set_and_init_buffer(UInt buf_idx)
 {
-    curr_buf = shmem->buf + buf_idx;
+    curr_ev_buf = shmem->eventBuffers + buf_idx;
+    curr_ev_buf->used = 0;
+    curr_ev_slot = curr_ev_buf->events + curr_ev_buf->used;
 
-    curr_buf->events_used = 0;
-    curr_slot = curr_buf->events + curr_buf->events_used;
-
-    curr_buf->pool_used = 0;
-    pool_slot = curr_buf->pool + curr_buf->pool_used;
+    curr_name_buf = shmem->nameBuffers + buf_idx;
+    curr_name_buf->used = 0;
+    curr_name_slot = curr_name_buf->names + curr_name_buf->used;
 }
 
 
@@ -81,17 +86,17 @@ static inline void set_next_buffer(void)
 
 static inline Bool is_events_full(void)
 {
-    return curr_buf->events_used == SIGIL2_MAX_EVENTS;
+    return curr_ev_buf->used == SIGIL2_EVENTS_BUFFER_SIZE;
 }
 
 
-static inline Bool is_pool_full(UInt size)
+static inline Bool is_names_full(UInt size)
 {
-    return (curr_buf->pool_used + size) > SIGIL2_POOL_BYTES;
+    return (curr_name_buf->used + size) > SIGIL2_EVENTS_BUFFER_SIZE;
 }
 
 
-BufferedSglEv* SGL_(acq_event_slot)()
+SglEvVariant* SGL_(acq_event_slot)()
 {
     tl_assert(initialized == True);
 
@@ -101,26 +106,26 @@ BufferedSglEv* SGL_(acq_event_slot)()
         set_next_buffer();
     }
 
-    curr_buf->events_used++;
-    return curr_slot++;
+    curr_ev_buf->used++;
+    return curr_ev_slot++;
 }
 
 
-EventPoolSlotTuple SGL_(acq_event_pool_slot)(UInt size)
+EventNameSlotTuple SGL_(acq_event_name_slot)(UInt size)
 {
     tl_assert(initialized == True);
 
-    if (is_events_full() || is_pool_full(size))
+    if (is_events_full() || is_names_full(size))
     {
         flush_to_sigil2();
         set_next_buffer();
     }
 
-    EventPoolSlotTuple tuple = {curr_slot, pool_slot, curr_buf->pool_used};
-    curr_buf->events_used += 1;
-    curr_buf->pool_used   += size;
-    curr_slot             += 1;
-    pool_slot             += size;
+    EventNameSlotTuple tuple = {curr_ev_slot, curr_name_slot, curr_name_buf->used};
+    curr_ev_buf->used   += 1;
+    curr_ev_slot        += 1;
+    curr_name_buf->used += size;
+    curr_name_slot      += size;
 
     return tuple;
 }
@@ -212,17 +217,17 @@ void SGL_(init_IPC)()
     Int filename_len;
 
     //len is strlen + null + other chars (/ and -0)
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_NAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_BASENAME) + 4;
     HChar shmem_path[filename_len];
-    VG_(snprintf)(shmem_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_NAME);
+    VG_(snprintf)(shmem_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_BASENAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_NAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_BASENAME) + 4;
     HChar emptyfifo_path[filename_len];
-    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_NAME);
+    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_BASENAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_NAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_BASENAME) + 4;
     HChar fullfifo_path[filename_len];
-    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_NAME);
+    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_BASENAME);
 
     emptyfd = open_fifo(emptyfifo_path, VKI_O_RDONLY);
     fullfd  = open_fifo(fullfifo_path, VKI_O_WRONLY);
