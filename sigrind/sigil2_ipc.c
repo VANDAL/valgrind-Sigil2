@@ -21,7 +21,7 @@ static char*          curr_name_slot;
 /* cached IPC state */
 
 
-static Bool is_full[SIGIL2_DBI_BUFFERS];
+static Bool is_full[SIGIL2_IPC_BUFFERS];
 /* track available buffers */
 
 
@@ -57,7 +57,7 @@ static inline void set_next_buffer(void)
 {
     /* try the next buffer, circular */
     ++curr_idx;
-    if (curr_idx == SIGIL2_DBI_BUFFERS)
+    if (curr_idx == SIGIL2_IPC_BUFFERS)
         curr_idx = 0;
 
     /* if the next buffer is full,
@@ -74,7 +74,7 @@ static inline void set_next_buffer(void)
             VG_(exit)(1);
         }
 
-        tl_assert(buf_idx < SIGIL2_DBI_BUFFERS);
+        tl_assert(buf_idx < SIGIL2_IPC_BUFFERS);
         tl_assert(buf_idx == curr_idx);
         curr_idx = buf_idx;
         is_full[curr_idx] = False;
@@ -217,17 +217,17 @@ void SGL_(init_IPC)()
     Int filename_len;
 
     //len is strlen + null + other chars (/ and -0)
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_SHMEM_BASENAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_IPC_SHMEM_BASENAME) + 4;
     HChar shmem_path[filename_len];
-    VG_(snprintf)(shmem_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_SHMEM_BASENAME);
+    VG_(snprintf)(shmem_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_IPC_SHMEM_BASENAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_EMPTYFIFO_BASENAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_IPC_EMPTYFIFO_BASENAME) + 4;
     HChar emptyfifo_path[filename_len];
-    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_EMPTYFIFO_BASENAME);
+    VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_IPC_EMPTYFIFO_BASENAME);
 
-    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_DBI_FULLFIFO_BASENAME) + 4;
+    filename_len = ipc_dir_len + VG_(strlen)(SIGIL2_IPC_FULLFIFO_BASENAME) + 4;
     HChar fullfifo_path[filename_len];
-    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_DBI_FULLFIFO_BASENAME);
+    VG_(snprintf)(fullfifo_path, filename_len, "%s/%s-0", SGL_(clo).ipc_dir, SIGIL2_IPC_FULLFIFO_BASENAME);
 
     emptyfd = open_fifo(emptyfifo_path, VKI_O_RDONLY);
     fullfd  = open_fifo(fullfifo_path, VKI_O_WRONLY);
@@ -236,7 +236,7 @@ void SGL_(init_IPC)()
     /* initialize cached IPC state */
     curr_idx = 0;
     set_and_init_buffer(curr_idx);
-    for (UInt i=0; i<SIGIL2_DBI_BUFFERS; ++i)
+    for (UInt i=0; i<SIGIL2_IPC_BUFFERS; ++i)
         is_full[i] = False;
 
     initialized = True;
@@ -248,7 +248,7 @@ void SGL_(term_IPC)(void)
     tl_assert(initialized == True);
 
     /* send finish sequence */
-    UInt finished = SIGIL2_DBI_FINISHED;
+    UInt finished = SIGIL2_IPC_FINISHED;
     if (VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) ||
         VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished))
     {
