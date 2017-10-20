@@ -151,6 +151,9 @@ static void function_left(fn_node* fn)
 {
   CLG_ASSERT(fn != 0);
 
+  /*send to sigil*/
+  SGL_(log_fn_leave)(fn);
+
   if ( (SGL_(clo).collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).collect_func) == 0) )
   {
     VG_(umsg)("*********************************************\n");
@@ -165,9 +168,6 @@ static void function_left(fn_node* fn)
     VG_(umsg)("*********************************************\n");
     SGL_(is_in_event_collect_func) = False;
   }
-
-  /*send to sigil*/
-  SGL_(log_fn_leave)(fn);
 
 #if CLG_ENABLE_DEBUG
   if (fn->verbosity >=0) {
